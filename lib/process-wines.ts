@@ -1,22 +1,16 @@
-// Este es el archivo NUEVO: lib/process-wines.ts
+// Archivo: lib/process-wines.ts
 
-// Importamos las "fichas técnicas" que definimos en types.ts
-import type { Wine, WineCategory, GroupedWineData } from "./types";
-// Si pusiste los tipos en lib/types/wine.ts, la línea de arriba sería:
-// import type { Wine, WineCategory, GroupedWineData } from "./types/wine";
+import type { Wine, WineCategory, GroupedWineData } from "./types"; // Ajusta la ruta si es necesario
 
-// Esta es la función principal que hará todo el trabajo de procesar los vinos.
 export function processAndGroupWines(wines: Wine[]): GroupedWineData {
-  // -------- PASO 1: FILTRADO INICIAL --------
-  // Nos quedamos solo con los vinos que tienen 'enCarta' como verdadero.
+  // PASO 1: FILTRADO INICIAL
   const filteredWines = wines.filter(wine => wine.enCarta === true);
-  // console.log("[processAndGroupWines] Después filtro 'enCarta === true':", filteredWines.length, "vinos."); // Puedes descomentar para depurar
+  // console.log(`[processWines] Después del filtro 'enCarta', quedaron: ${filteredWines.length} vinos.`);
 
-  // -------- PASO 2: ORDENAMIENTO GLOBAL DE LOS VINOS FILTRADOS --------
+  // PASO 2: ORDENAMIENTO GLOBAL DE LOS VINOS FILTRADOS
   const sortedWines = [...filteredWines].sort((vinoA, vinoB) => {
     const ordenA = vinoA.orden;
     const ordenB = vinoB.orden;
-
     if (ordenA !== null && ordenB === null) return -1;
     if (ordenA === null && ordenB !== null) return 1;
     if (ordenA !== null && ordenB !== null && ordenA !== ordenB) {
@@ -35,69 +29,68 @@ export function processAndGroupWines(wines: Wine[]): GroupedWineData {
     if (aEsNumero && bEsNumero && cosechaA !== cosechaB) {
       return cosechaA - cosechaB;
     }
-
     return (vinoA.nombre || "").localeCompare(vinoB.nombre || "");
   });
 
-  // -------- PASO 3: AGRUPACIÓN VISUAL (CORREGIDA PARA ASIGNACIÓN Y DEDUPLICACIÓN) --------
-const categoriasTemporales: Record<string, Wine[]> = {};
-const vinosYaProcesadosPorCategoria = new Map<string, Set<string>>(); // Mapa: nombreCategoria -> Set de identificadoresUnicosDeVino
+  // PASO 3: AGRUPACIÓN VISUAL (CON DEDUPLICACIÓN DE PRODUCTO POR CATEGORÍA)
+  const categoriasTemporales: Record<string, Wine[]> = {};
+  // Rastreador para asegurar que un producto (identificado por SKU o nombre+bodega)
+  // solo se añada una vez a cada categoría visual específica.
+  const productoYaEnCategoriaTracker = new Set<string>();
 
-sortedWines.forEach(vino => {
-  // Definir el identificador único del PRODUCTO vino.
-  // Priorizamos idInterno (SKU_LAZZY). Si no existe, usamos nombre+productor.
-  const identificadorUnicoProducto = vino.idInterno && vino.idInterno.trim() !== ""
-    ? vino.idInterno.trim()
-    : `${vino.nombre?.trim()}-${vino.productor?.trim()}`;
+  sortedWines.forEach(vino => {
+    // Usamos SKU (idInterno) como identificador primario del producto.
+    // Si no hay SKU, usamos una combinación de nombre y productor normalizados.
+    const nombreNorm = vino.nombre?.trim().toLowerCase() || "sin_nombre";
+    const productorNorm = vino.productor?.trim().toLowerCase() || "sin_productor";
+    const identificadorUnicoProducto = (vino.idInterno && vino.idInterno.trim() !== "")
+      ? vino.idInterno.trim()
+      : `${nombreNorm}-${productorNorm}`;
 
-  const categoriasParaEsteVino = new Set<string>(); // Nombres de las categorías a las que este vino podría pertenecer
+    const categoriasDelVino = new Set<string>(); // Categorías a las que este vino podría pertenecer
 
-  // 1. Categoría por Categoria_Sommelier (vino.estilo)
-  if (vino.estilo && vino.estilo.trim() !== "") {
-    categoriasParaEsteVino.add(vino.estilo.trim());
-  }
-
-  // 2. Categoría por Tipo_Vino (vino.tipo)
-  if (vino.tipo && vino.tipo.trim() !== "") {
-    categoriasParaEsteVino.add(vino.tipo.trim());
-  }
-
-  // 3. Si no tiene ni estilo ni tipo con valor, va a "Otros Vinos"
-  if (categoriasParaEsteVino.size === 0) {
-    categoriasParaEsteVino.add('Otros Vinos');
-  }
-
-  // Añadir el vino a cada una de sus categorías identificadas, evitando duplicados del MISMO PRODUCTO VINO
-  categoriasParaEsteVino.forEach(nombreCategoria => {
-    if (!categoriasTemporales[nombreCategoria]) {
-      categoriasTemporales[nombreCategoria] = [];
-      vinosYaProcesadosPorCategoria.set(nombreCategoria, new Set<string>());
+    // 1. Por Categoria_Sommelier (vino.estilo)
+    if (vino.estilo && vino.estilo.trim() !== "") {
+      categoriasDelVino.add(vino.estilo.trim());
+    }
+    // 2. Por Tipo_Vino (vino.tipo)
+    if (vino.tipo && vino.tipo.trim() !== "") {
+      categoriasDelVino.add(vino.tipo.trim());
+    }
+    // 3. Por Defecto "Otros Vinos"
+    if (categoriasDelVino.size === 0) {
+      categoriasDelVino.add('Otros Vinos');
     }
 
-    // Verificar si este PRODUCTO vino ya fue añadido a ESTA categoría específica
-    if (!vinosYaProcesadosPorCategoria.get(nombreCategoria)!.has(identificadorUnicoProducto)) {
-      categoriasTemporales[nombreCategoria].push(vino);
-      vinosYaProcesadosPorCategoria.get(nombreCategoria)!.add(identificadorUnicoProducto);
-      
-      // Log para depuración de la asignación
-      if (vino.nombre === "A lisa" || vino.nombre === "Alma Roja" || vino.nombre === "Fuego Andino") {
-        console.log(`[processWines-AGRUPACION] Añadiendo "${vino.nombre}" (ID Producto: ${identificadorUnicoProducto}) a Categoría: "${nombreCategoria}"`);
+    // Añadir este vino a las categorías identificadas, evitando duplicados del MISMO PRODUCTO VINO en la MISMA CATEGORÍA.
+    categoriasDelVino.forEach(nombreCategoria => {
+      if (!categoriasTemporales[nombreCategoria]) {
+        categoriasTemporales[nombreCategoria] = [];
       }
-    } else {
-      // Log para depuración si se evita un duplicado
-      if (vino.nombre === "A lisa" || vino.nombre === "Alma Roja" || vino.nombre === "Fuego Andino") {
-        console.log(`[processWines-AGRUPACION] EVITADO DUPLICADO: "${vino.nombre}" (ID Producto: ${identificadorUnicoProducto}) ya existe en Categoría: "${nombreCategoria}"`);
+
+      const trackingKey = `${identificadorUnicoProducto}%%%${nombreCategoria}`;
+
+      if (!productoYaEnCategoriaTracker.has(trackingKey)) {
+        categoriasTemporales[nombreCategoria].push(vino);
+        productoYaEnCategoriaTracker.add(trackingKey);
+        
+        // if (vino.nombre === "A lisa" || vino.nombre === "Alma Roja") { // Log de depuración
+        //   console.log(`[processWines-AGRUP] Añadido "${vino.nombre}" (ID Prod: ${identificadorUnicoProducto}) a Cat: "${nombreCategoria}"`);
+        // }
+      } else {
+        // if (vino.nombre === "A lisa" || vino.nombre === "Alma Roja") { // Log de depuración
+        //   console.log(`[processWines-AGRUP] Duplicado EVITADO para "${vino.nombre}" (ID Prod: ${identificadorUnicoProducto}) en Cat: "${nombreCategoria}"`);
+        // }
       }
-    }
+    });
   });
-});
 
-  // -------- PASO 4: ORDENAR LAS CATEGORÍAS Y PREPARAR EL RESULTADO FINAL --------
-  const resultadoFinal: GroupedWineData = Object.keys(categoriasTemporales) // Se usa categoriasTemporales
+  // PASO 4: ORDENAR LAS CATEGORÍAS Y PREPARAR EL RESULTADO FINAL
+  const resultadoFinal: GroupedWineData = Object.keys(categoriasTemporales)
     .sort((a, b) => a.localeCompare(b))
     .map(categoryName => ({
       categoryName,
-      wines: categoriasTemporales[categoryName] // Se usa categoriasTemporales
+      wines: categoriasTemporales[categoryName]
     }));
 
   return resultadoFinal;
