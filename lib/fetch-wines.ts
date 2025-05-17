@@ -1,11 +1,6 @@
 // Archivo: lib/fetch-wines.ts
 
-// Asegúrate de que la ruta a tu archivo de tipos sea la correcta.
-// Si tu archivo de tipos se llama 'wine.ts' y está en la carpeta 'types' (que a su vez está al mismo nivel que 'lib'),
-// y tienes un alias '@/' que apunta a la raíz de tu proyecto (donde está 'types', 'lib', 'app', etc.),
-// entonces "@/types/wine" es probablemente correcto.
-// Si 'types.ts' está directamente en 'lib/', podría ser './types' o '@/lib/types'.
-import type { Wine } from "@/types/wine";
+import type { Wine } from "@/types/wine"; // Asegúrate que la ruta a tu archivo de tipos sea correcta
 
 export async function fetchWines(): Promise<Wine[]> {
   try {
@@ -17,7 +12,7 @@ export async function fetchWines(): Promise<Wine[]> {
     }
     const csvText = await response.text();
     const wines = parseCSV(csvText);
-    console.log("[fetchWines] Vinos parseados del CSV:", wines.length); // Log general
+    console.log(`[fetchWines] Vinos parseados del CSV en total (antes de cualquier filtro en otras partes): ${wines.length}`);
     return wines;
   } catch (error) {
     console.error("Error crítico en fetchWines:", error);
@@ -25,7 +20,6 @@ export async function fetchWines(): Promise<Wine[]> {
   }
 }
 
-// Función auxiliar para parsear una línea del CSV, manejando comillas.
 function parseCSVLine(line: string): string[] {
   const values: string[] = [];
   let currentValue = "";
@@ -46,7 +40,6 @@ function parseCSVLine(line: string): string[] {
   return values;
 }
 
-// Función principal para parsear el texto CSV completo.
 function parseCSV(csvText: string): Wine[] {
   const lines = csvText.split("\n");
   if (lines.length <= 1) {
@@ -55,85 +48,83 @@ function parseCSV(csvText: string): Wine[] {
   }
 
   const headers = lines[0].split(",").map((header) => header.trim());
+
+  // ----> LOG PARA VER CABECERAS Y SU MAPEO <----
+  console.log("----------------------------------------------------");
+  console.log("[parseCSV] CABECERAS DETECTADAS EN EL CSV Y SU MAPEO:");
+  headers.forEach(h => {
+    const mappedKey = mapHeaderToWineProperty(h);
+    console.log(`  -> Cabecera Original CSV: "${h}"   --- Mapeada a Propiedad Wine --->   "${mappedKey || "NO MAPEADA"}"`);
+  });
+  console.log("----------------------------------------------------");
+  // ----> FIN DE LOG PARA CABECERAS <----
+
   const wines: Wine[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
-    if (!line) continue; // Saltar líneas vacías
+    if (!line) continue;
 
     const values = parseCSVLine(line);
-    const wine: any = { id: `wine-${Date.now()}-${i}` }; // ID único generado
+    const wine: any = { id: `wine-${Date.now()}-${i}` };
 
     headers.forEach((header, index) => {
       const rawValue = values[index] ? values[index].trim() : "";
       const key = mapHeaderToWineProperty(header);
 
       if (key) {
-        let processedValue: any = rawValue; // Por defecto, el valor es el texto crudo
-
-        // Conversiones de tipo específicas
+        let processedValue: any = rawValue;
         if (key === 'enCarta') {
           const lowerVal = rawValue.toLowerCase();
-          processedValue = lowerVal === "true" || lowerVal === "verdadero"; // Acepta "true" O "verdadero"
+          processedValue = lowerVal === "true" || lowerVal === "verdadero";
         } else if (key === 'orden') {
           const num = parseInt(rawValue, 10);
           processedValue = isNaN(num) ? null : num;
         } else if (key === 'precio' || key === 'precioCopa') {
-          const num = parseFloat(rawValue.replace(',', '.')); // Considera comas en decimales
+          const num = parseFloat(rawValue.replace(',', '.'));
           processedValue = isNaN(num) ? null : num;
         } else if (key === 'ano') {
           if (rawValue.toUpperCase() === 'N/V') {
             processedValue = 'N/V';
           } else if (rawValue) {
             const yearNum = parseInt(rawValue, 10);
-            // Si no es un número válido, pero rawValue tiene contenido (ej. texto descriptivo), mantenemos rawValue.
-            // Si rawValue es vacío y no es 'N/V', se volverá null abajo.
             processedValue = isNaN(yearNum) ? rawValue : yearNum;
           } else {
-            processedValue = null; // Si está vacío, lo dejamos como 'nada'
+            processedValue = null;
           }
         }
-        // Aquí no se hace más conversión, se asigna el valor procesado o el rawValue si no hubo regla.
         wine[key] = processedValue;
       }
     });
 
-    // console.log para depurar cada vino parseado (antes de filtrar por nombre)
-    // Descomenta la siguiente línea si quieres ver cada objeto 'wine' en la consola.
-    // console.log("CSV Parseado - Obj Vino:", JSON.stringify(wine));
-    // console.log("CSV Parseado - enCarta:", wine.enCarta, "| Tipo:", typeof wine.enCarta, "| Nombre:", wine.nombre);
-
-
-    if (wine.nombre) { // Solo añadimos si tiene nombre (un filtro muy básico aquí)
-        // Log específico para 'enCarta' justo antes de decidir si se añade el vino
-        if (i < 5) { // Loguea solo los primeros 5 para no llenar la consola
-            console.log(`[parseCSV] Vino procesado: ${wine.nombre}, enCarta: ${wine.enCarta} (tipo: ${typeof wine.enCarta}), valor crudo para enCarta: '${values[headers.findIndex(h => mapHeaderToWineProperty(h) === 'enCarta')]}', orden: ${wine.orden}`);
-        }
-        wines.push(wine as Wine);
-    } else {
-        // Loguea si un vino es descartado por no tener nombre
-        // console.log("[parseCSV] Vino descartado por no tener nombre. Datos crudos de la línea:", values.join(','));
+    if (wine.nombre) {
+      // Log para los primeros vinos procesados, mostrando el valor crudo de enCarta
+      if (i < 6) { // Loguea los primeros 5 vinos (índice 1 a 5)
+        const enCartaColumnIndex = headers.findIndex(h => mapHeaderToWineProperty(h) === 'enCarta');
+        const rawEnCartaValue = enCartaColumnIndex !== -1 ? values[enCartaColumnIndex] : "COLUMNA_ENCARTA_NO_ENCONTRADA";
+        console.log(`[parseCSV] Procesando vino: ${wine.nombre || "SIN_NOMBRE"}, enCarta (procesado): ${wine.enCarta} (tipo: ${typeof wine.enCarta}), valor crudo para enCarta: '${rawEnCartaValue}', orden: ${wine.orden}`);
+      }
+      wines.push(wine as Wine);
     }
   }
   return wines;
 }
 
-// Función para mapear encabezados del CSV a propiedades del objeto Wine.
 function mapHeaderToWineProperty(header: string): keyof Wine | null {
-  const normalizedHeader = header.trim().toUpperCase(); // Normalizar: quitar espacios y a MAYÚSCULAS
-
-  // Las CLAVES (izquierda) deben ser los encabezados de tu CSV en MAYÚSCULAS.
-  // Los VALORES (derecha) deben ser las propiedades de tu 'interface Wine'.
+  const normalizedHeader = header.trim().toUpperCase();
   const headerMap: Record<string, keyof Wine> = {
     "NOMBRE_VINO_COMPLETO": "nombre",
     "BODEGA": "productor",
     "COSECHA": "ano",
     "PRECIO_BOTELLA_RESTAURANTE R1": "precio",
     "PRECIO R1 COPA": "precioCopa",
-    // ¡MUY IMPORTANTE! Verifica esta línea con tu CSV:
-    // Si tu columna se llama "EnCarta_Restaurante_1" (con guion bajo antes del 1), usa "ENCARTA_RESTAURANTE_1".
-    // Si se llama "EnCarta_Restaurante1" (sin guion bajo antes del 1), usa "ENCARTA_RESTAURANTE1".
-    "ENCARTA_RESTAURANTE_1": "enCarta", // <--- AJUSTA ESTA CLAVE SI ES NECESARIO
+    // --- ¡ATENCIÓN AQUÍ! ---
+    // Cambia "ENCARTA_RESTAURANTE_1" por el nombre EXACTO de tu columna en el CSV (en mayúsculas)
+    // Basado en tu imagen del CSV, parece que la columna es "EnCarta_Restaurante_1"
+    // Si fuera "EnCarta_Restaurante1" (sin el último guion bajo), deberías poner:
+    // "ENCARTA_RESTAURANTE1": "enCarta",
+    "ENCARTA_RESTAURANTE_1": "enCarta", // <-- Revisa esta clave con tu archivo CSV
+    // ------------------------
     "PAIS_REGION_ORIGEN": "region",
     "CATEGORIA_SOMMELIER": "estilo",
     "TIPO_VINO": "tipo",
@@ -147,12 +138,12 @@ function mapHeaderToWineProperty(header: string): keyof Wine | null {
     "OTROS": "otros",
     "ALTITUD": "altitud",
     "ORDEN_VISUALIZACION_RESTAURANTE": "orden",
-    "SKU_LAZZY": "idInterno", // Usamos 'idInterno' para el SKU del CSV
+    "SKU_LAZZY": "idInterno",
   };
 
   const mappedKey = headerMap[normalizedHeader];
-  // if (!mappedKey && header.trim() !== "") { // Descomenta para ver cabeceras no mapeadas
-  //   console.warn(`[mapHeaderToWineProperty] Cabecera no mapeada: '${header}' (Normalizada: '${normalizedHeader}')`);
-  // }
+  if (!mappedKey && header.trim() !== "" && !header.startsWith("FIELD")) { // Ignora si la cabecera es FIELD seguito de número.
+    console.warn(`[mapHeaderToWineProperty] Cabecera del CSV no mapeada: '${header}' (Normalizada como: '${normalizedHeader}')`);
+  }
   return mappedKey || null;
 }
