@@ -1,6 +1,6 @@
 import type { Wine } from "@/types/wine"
 
-// Mock data to use as fallback when Google Sheets API fails
+// Mock data to use as fallback when Google Sheets fetch fails
 export const MOCK_WINES: Wine[] = [
   {
     id: "1",
@@ -22,6 +22,8 @@ export const MOCK_WINES: Wine[] = [
     estilo: "Tinto de cuerpo completo",
     tipo: "Tinto",
     caracteristica: "Vino Tinto Malbec",
+    categoria: "Grandes Tintos",
+    orden: 1,
   },
   {
     id: "2",
@@ -41,6 +43,8 @@ export const MOCK_WINES: Wine[] = [
     estilo: "Blanco con crianza en barrica",
     tipo: "Blanco",
     caracteristica: "Vino Blanco Chardonnay",
+    categoria: "Blancos Frescos",
+    orden: 1,
   },
   {
     id: "3",
@@ -59,6 +63,8 @@ export const MOCK_WINES: Wine[] = [
     estilo: "Espumoso Brut Nature",
     tipo: "Espumante",
     caracteristica: "Vino Espumante Rosé",
+    categoria: "Burbujas Festivas",
+    orden: 1,
   },
   {
     id: "4",
@@ -78,5 +84,7 @@ export const MOCK_WINES: Wine[] = [
     estilo: "Rosado seco",
     tipo: "Rosado",
     caracteristica: "Vino Rosado",
+    categoria: "Rosados Elegantes",
+    orden: 1,
   },
 ]

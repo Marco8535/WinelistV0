@@ -1,43 +1,74 @@
-import type { Wine } from "@/lib/data"
+"use client"
+
+import { useEffect, useState } from "react"
+import type { Wine } from "@/types/wine"
 import { WineCard } from "./wine-card"
+import { fetchWines, groupWinesByCategory } from "@/lib/fetch-wines"
 
-interface WineListProps {
-  wines: Wine[]
-}
+export function WineList() {
+  const [groupedWines, setGroupedWines] = useState<Record<string, Wine[]>>({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-export function WineList({ wines }: WineListProps) {
-  // Group wines by category
-  const groupedWines = wines.reduce(
-    (acc, wine) => {
-      // Use Categoria_Sommelier if available, otherwise use Tipo_Vino
-      const category = wine.Categoria_Sommelier || wine.Tipo_Vino
+  useEffect(() => {
+    const loadWines = async () => {
+      try {
+        setLoading(true)
+        setError(null)
 
-      if (!acc[category]) {
-        acc[category] = []
+        const wines = await fetchWines()
+        const grouped = groupWinesByCategory(wines)
+
+        setGroupedWines(grouped)
+      } catch (err) {
+        console.error("Error loading wines:", err)
+        setError("Failed to load wine data. Please try again later.")
+      } finally {
+        setLoading(false)
       }
+    }
 
-      acc[category].push(wine)
-      return acc
-    },
-    {} as Record<string, Wine[]>,
-  )
+    loadWines()
+  }, [])
 
-  // Sort wines within each category by Orden_Visualizacion_Restaurante
-  Object.keys(groupedWines).forEach((category) => {
-    groupedWines[category].sort((a, b) => a.Orden_Visualizacion_Restaurante - b.Orden_Visualizacion_Restaurante)
-  })
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-10">
+        <p className="text-lg">Cargando carta de vinos...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center p-10">
+        <p className="text-lg text-red-600">Error: {error}</p>
+      </div>
+    )
+  }
+
+  if (Object.keys(groupedWines).length === 0) {
+    return (
+      <div className="flex items-center justify-center p-10">
+        <p className="text-lg">No hay vinos disponibles en la carta en este momento.</p>
+      </div>
+    )
+  }
+
+  // Get category names and sort them alphabetically
+  const sortedCategories = Object.keys(groupedWines).sort((a, b) => a.localeCompare(b))
 
   return (
     <div className="space-y-12">
-      {Object.entries(groupedWines).map(([category, categoryWines]) => (
+      {sortedCategories.map((category) => (
         <section key={category} className="wine-section">
-          <h2 className="text-2xl font-serif font-medium text-[#003366] mb-6 pb-2 border-b border-[#E2E8F0]">
+          <h2 className="text-2xl font-serif font-medium text-[#003366] dark:text-blue-400 mb-6 pb-2 border-b border-[#E2E8F0] dark:border-gray-700">
             {category}
           </h2>
 
           <div className="space-y-6">
-            {categoryWines.map((wine) => (
-              <WineCard key={wine.SKU_LAZZY} wine={wine} />
+            {groupedWines[category].map((wine) => (
+              <WineCard key={wine.id} wine={wine} />
             ))}
           </div>
         </section>

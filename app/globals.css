@@ -8,6 +8,7 @@
   --accent: 0 51 102;
   --muted: 74 85 104;
   --border: 226 232 240;
+  --radius: 0.5rem;
 }
 
 body {
