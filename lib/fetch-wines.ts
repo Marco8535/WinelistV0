@@ -123,7 +123,7 @@ function mapHeaderToWineProperty(header: string): keyof Wine | null {
     // Basado en tu imagen del CSV, parece que la columna es "EnCarta_Restaurante_1"
     // Si fuera "EnCarta_Restaurante1" (sin el último guion bajo), deberías poner:
     // "ENCARTA_RESTAURANTE1": "enCarta",
-    "ENCARTA_RESTAURANTE_1": "enCarta", // <-- Revisa esta clave con tu archivo CSV
+    "ENCARTA_RESTAURANTE1": "enCarta", // <-- Revisa esta clave con tu archivo CSV
     // ------------------------
     "PAIS_REGION_ORIGEN": "region",
     "CATEGORIA_SOMMELIER": "estilo",

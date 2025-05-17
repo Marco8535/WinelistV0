@@ -1,18 +1,28 @@
-"use client"
+// Archivo: components/wine-list.tsx
 
-import { useWine } from "@/context/wine-context"
-import { WineItem } from "./wine-item"
-import { WineDetail } from "./wine-detail"
+"use client";
+
+import { useWine } from "@/context/wine-context";
+import { WineItem } from "./wine-item"; // Asumo que este componente está listo para mostrar un vino
+import { WineDetail } from "./wine-detail"; // Asumo que este componente está listo
 
 export function WineList() {
-  const { loading, error, filteredWines, selectedCategory, searchQuery, selectedWine } = useWine()
+  // Obtenemos categorizedWineData en lugar de filteredWines para la lista principal
+  const {
+    loading,
+    error,
+    categorizedWineData, // <--- Usaremos este
+    selectedCategory,    // Todavía puede ser útil para mensajes o lógica de UI
+    searchQuery,         // Todavía puede ser útil para mensajes o lógica de UI
+    selectedWine,
+  } = useWine();
 
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
-        <p className="text-lg">Loading wine selection...</p>
+        <p className="text-lg">Cargando selección de vinos...</p> {/* Cambiado a español */}
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -20,35 +30,54 @@ export function WineList() {
       <div className="flex-1 flex items-center justify-center p-8">
         <p className="text-lg text-red-600">{error}</p>
       </div>
-    )
+    );
   }
 
-  if (filteredWines.length === 0) {
-    let message = "No wines match your current selection. Please adjust your search or filters."
+  // Si hay un vino seleccionado, mostramos el detalle primero
+  if (selectedWine) {
+    return <WineDetail />;
+  }
 
-    if (selectedCategory === "favorites") {
+  // Comprobamos si hay datos para mostrar después de la carga y sin errores.
+  const noWinesToShow = !categorizedWineData ||
+                        categorizedWineData.length === 0 ||
+                        categorizedWineData.every(category => !category.wines || category.wines.length === 0);
+
+  if (noWinesToShow) {
+    let message = "No hay vinos disponibles para mostrar según los criterios actuales.";
+    if (selectedCategory === "favorites") { // Esta lógica de mensaje puede mantenerse si 'selectedCategory' aún es relevante
       message =
-        "You haven't bookmarked any wines yet. Tap the bookmark icon next to a wine to add it to your favorites."
+        "Aún no has marcado ningún vino como favorito. Toca el ícono de marcador junto a un vino para añadirlo.";
     }
-
+    // Podrías añadir un mensaje específico si hay un searchQuery activo y no hay resultados
+    // if (searchQuery && noWinesToShow) {
+    //   message = `No se encontraron vinos que coincidan con "${searchQuery}".`;
+    // }
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <p className="text-lg text-center max-w-md">{message}</p>
       </div>
-    )
+    );
   }
 
-  if (selectedWine) {
-    return <WineDetail />
-  }
-
+  // Si no hay vino seleccionado, y tenemos datos categorizados, mostramos la lista por categorías
   return (
-    <div className="flex-1 overflow-y-auto hide-scrollbar">
-      <ul>
-        {filteredWines.map((wine) => (
-          <WineItem key={wine.id} wine={wine} />
-        ))}
-      </ul>
+    <div className="flex-1 overflow-y-auto hide-scrollbar p-4">
+      {categorizedWineData.map((category) => (
+        // Solo renderizar la sección de la categoría si tiene vinos
+        category.wines && category.wines.length > 0 && (
+          <div key={category.categoryName} className="mb-8">
+            <h2 className="text-xl font-bold mb-3 sticky top-0 bg-background py-2 z-10 border-b"> {/* Estilos ajustados */}
+              {category.categoryName}
+            </h2>
+            <ul className="space-y-2"> {/* Añadido space-y para espaciado entre WineItems */}
+              {category.wines.map((wine) => (
+                <WineItem key={wine.id} wine={wine} />
+              ))}
+            </ul>
+          </div>
+        )
+      ))}
     </div>
-  )
+  );
 }
