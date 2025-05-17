@@ -1,54 +1,47 @@
-"use client"
+import type { Wine } from "@/lib/data"
+import { WineCard } from "./wine-card"
 
-import { useWine } from "@/context/wine-context"
-import { WineItem } from "./wine-item"
-import { WineDetail } from "./wine-detail"
+interface WineListProps {
+  wines: Wine[]
+}
 
-export function WineList() {
-  const { loading, error, filteredWines, selectedCategory, searchQuery, selectedWine } = useWine()
+export function WineList({ wines }: WineListProps) {
+  // Group wines by category
+  const groupedWines = wines.reduce(
+    (acc, wine) => {
+      // Use Categoria_Sommelier if available, otherwise use Tipo_Vino
+      const category = wine.Categoria_Sommelier || wine.Tipo_Vino
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <p className="text-lg">Loading wine selection...</p>
-      </div>
-    )
-  }
+      if (!acc[category]) {
+        acc[category] = []
+      }
 
-  if (error) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <p className="text-lg text-red-600">{error}</p>
-      </div>
-    )
-  }
+      acc[category].push(wine)
+      return acc
+    },
+    {} as Record<string, Wine[]>,
+  )
 
-  if (filteredWines.length === 0) {
-    let message = "No wines match your current selection. Please adjust your search or filters."
-
-    if (selectedCategory === "favorites") {
-      message =
-        "You haven't bookmarked any wines yet. Tap the bookmark icon next to a wine to add it to your favorites."
-    }
-
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <p className="text-lg text-center max-w-md">{message}</p>
-      </div>
-    )
-  }
-
-  if (selectedWine) {
-    return <WineDetail />
-  }
+  // Sort wines within each category by Orden_Visualizacion_Restaurante
+  Object.keys(groupedWines).forEach((category) => {
+    groupedWines[category].sort((a, b) => a.Orden_Visualizacion_Restaurante - b.Orden_Visualizacion_Restaurante)
+  })
 
   return (
-    <div className="flex-1 overflow-y-auto hide-scrollbar">
-      <ul>
-        {filteredWines.map((wine) => (
-          <WineItem key={wine.id} wine={wine} />
-        ))}
-      </ul>
+    <div className="space-y-12">
+      {Object.entries(groupedWines).map(([category, categoryWines]) => (
+        <section key={category} className="wine-section">
+          <h2 className="text-2xl font-serif font-medium text-[#003366] mb-6 pb-2 border-b border-[#E2E8F0]">
+            {category}
+          </h2>
+
+          <div className="space-y-6">
+            {categoryWines.map((wine) => (
+              <WineCard key={wine.SKU_LAZZY} wine={wine} />
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   )
 }

@@ -1,6 +1,26 @@
+"use client"
+
 import Image from "next/image"
+import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 
 export function Header() {
+  const { theme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  // Avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <header className="flex justify-center py-6 px-4">
+        <div className="w-48 h-16"></div>
+      </header>
+    )
+  }
+
   return (
     <header className="flex justify-center py-6 px-4">
       <div className="w-48 h-auto">
@@ -10,7 +30,7 @@ export function Header() {
           width={240}
           height={120}
           priority
-          className="w-full h-auto"
+          className={`w-full h-auto ${theme === "dark" ? "filter invert" : ""}`}
         />
       </div>
     </header>

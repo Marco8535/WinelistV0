@@ -36,10 +36,10 @@ export function CategoryNavigation() {
   }
 
   return (
-    <div className="relative flex items-center border-b border-gray-200">
+    <div className="relative flex items-center border-b border-border">
       <button
         onClick={() => scroll("left")}
-        className="absolute left-0 z-10 p-2 bg-[#F8F8F8] e-ink-button"
+        className="absolute left-0 z-10 p-2 bg-background e-ink-button"
         aria-label="Scroll left"
       >
         <ChevronLeft size={20} />
@@ -54,7 +54,7 @@ export function CategoryNavigation() {
           >
             {category.id === "favorites" ? (
               <>
-                <Bookmark size={16} className={`mr-1 ${hasBookmarkedWines ? "fill-[#4A0404] text-[#4A0404]" : ""}`} />
+                <Bookmark size={16} className={`mr-1 ${hasBookmarkedWines ? "fill-accent text-accent" : ""}`} />
                 {category.label}
               </>
             ) : (
@@ -66,7 +66,7 @@ export function CategoryNavigation() {
 
       <button
         onClick={() => scroll("right")}
-        className="absolute right-0 z-10 p-2 bg-[#F8F8F8] e-ink-button"
+        className="absolute right-0 z-10 p-2 bg-background e-ink-button"
         aria-label="Scroll right"
       >
         <ChevronRight size={20} />

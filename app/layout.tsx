@@ -1,17 +1,21 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Lato } from "next/font/google"
+import { Inter, Playfair_Display } from "next/font/google"
 import "./globals.css"
 
-const lato = Lato({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["100", "300", "400", "700", "900"],
-  variable: "--font-lato",
+  variable: "--font-inter",
+})
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
 })
 
 export const metadata: Metadata = {
-  title: "Wine List | It's Open",
-  description: "Digital wine list for fine dining",
+  title: "Wine List | Fine Dining",
+  description: "Curated wine selection for fine dining",
     generator: 'v0.dev'
 }
 
@@ -22,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${lato.variable} font-sans bg-[#F8F8F8] text-[#1A1A1A]`}>{children}</body>
+      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased`}>{children}</body>
     </html>
   )
 }

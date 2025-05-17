@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Search, Filter, X } from "lucide-react"
 import { useWine } from "@/context/wine-context"
 import { FilterPanel } from "./filter-panel"
+import { ThemeToggle } from "./theme-toggle"
 
 export function ActionBar() {
   const { searchQuery, setSearchQuery } = useWine()
@@ -24,16 +25,17 @@ export function ActionBar() {
   return (
     <div className="px-4 py-2">
       <div className="flex justify-end space-x-2">
+        <ThemeToggle />
         <button
           onClick={toggleSearch}
-          className="p-2 rounded-full border border-gray-300 e-ink-button"
+          className="p-2 rounded-full border border-border e-ink-button"
           aria-label="Search wines"
         >
           <Search size={20} />
         </button>
         <button
           onClick={toggleFilter}
-          className="p-2 rounded-full border border-gray-300 e-ink-button"
+          className="p-2 rounded-full border border-border e-ink-button"
           aria-label="Filter wines"
         >
           <Filter size={20} />
@@ -41,7 +43,7 @@ export function ActionBar() {
       </div>
 
       {showSearch && (
-        <div className="mt-2 p-2 bg-white border border-gray-200 rounded-md">
+        <div className="mt-2 p-2 bg-card border border-border rounded-md">
           <div className="flex items-center">
             <input
               type="text"
