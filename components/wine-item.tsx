@@ -32,16 +32,19 @@ export function WineItem({ wine }: WineItemProps) {
   }
 
   // Format price display
-  const formatPrice = (price: string | undefined) => {
-    if (!price) return ""
+  const formatPrice = (price: number | string | undefined | null) => {
+    if (price === undefined || price === null || price === "") return ""
+
+    // Convert to string if it's a number
+    const priceStr = typeof price === "number" ? price.toString() : price
 
     // If price is already formatted with currency symbol, return as is
-    if (price.startsWith("$") || price.startsWith("€")) {
-      return price
+    if (priceStr.startsWith("$") || priceStr.startsWith("€")) {
+      return priceStr
     }
 
     // Otherwise, add $ symbol
-    return `$${price}`
+    return `$${priceStr}`
   }
 
   return (
@@ -61,8 +64,10 @@ export function WineItem({ wine }: WineItemProps) {
           </div>
 
           <div className="flex flex-col items-end">
-            {/* Precio_Botella_Restaurante R1 en negrita a la derecha */}
-            {wine.precio && <span className="font-bold text-right mb-1">{formatPrice(wine.precio)}</span>}
+            {/* Precio por botella en negrita */}
+            {wine.precio !== undefined && wine.precio !== null && (
+              <span className="font-bold text-right mb-1">{formatPrice(wine.precio)}</span>
+            )}
 
             <button
               onClick={handleBookmarkClick}
@@ -74,8 +79,8 @@ export function WineItem({ wine }: WineItemProps) {
           </div>
         </div>
 
-        {/* Precio R1 copa abajo del precio por botella en gris (solo si existe) */}
-        {wine.precioCopa && (
+        {/* Precio por copa en gris */}
+        {wine.precioCopa !== undefined && wine.precioCopa !== null && (
           <div className="flex justify-end text-sm text-gray-600">
             <span>Copa: {formatPrice(wine.precioCopa)}</span>
           </div>

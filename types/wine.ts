@@ -27,7 +27,7 @@ export interface Wine {
   orden?: number // Display order
 }
 
-export type WineCategory = "all" | "glass" | "red" | "white" | "sparkling" | "rose" | "favorites"
+export type WineCategory = string
 
 export interface WineFilter {
   region?: string[]
@@ -36,3 +36,10 @@ export interface WineFilter {
   type?: string[]
   price?: string[]
 }
+
+export interface WineCategory {
+  categoryName: string
+  wines: Wine[]
+}
+
+export type GroupedWineData = WineCategory[]

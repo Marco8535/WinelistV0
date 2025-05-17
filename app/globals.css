@@ -55,11 +55,23 @@ body {
   padding: 0.75rem 1rem;
   white-space: nowrap;
   font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
 .category-tab.active {
   font-weight: 700;
-  border-bottom: 2px solid #4a0404;
+  color: #4a0404;
+}
+
+.category-tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 10%;
+  width: 80%;
+  height: 2px;
+  background-color: #4a0404;
 }
 
 /* Bookmark animation for e-ink */

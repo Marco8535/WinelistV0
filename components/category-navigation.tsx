@@ -1,29 +1,49 @@
 "use client"
-
-import type React from "react"
-
-import { useRef } from "react"
+import { useRef, useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Bookmark } from "lucide-react"
 import { useWine } from "@/context/wine-context"
-import type { WineCategory } from "@/types/wine"
-
-const categories: { id: WineCategory; label: string; icon?: React.ReactNode }[] = [
-  { id: "all", label: "All Wines" },
-  { id: "glass", label: "By the Glass" },
-  { id: "red", label: "Red Wines" },
-  { id: "white", label: "White Wines" },
-  { id: "sparkling", label: "Sparkling Wines" },
-  { id: "rose", label: "Rosé Wines" },
-  {
-    id: "favorites",
-    label: "Client Favorites",
-    icon: <Bookmark className="mr-1 h-4 w-4" />,
-  },
-]
 
 export function CategoryNavigation() {
-  const { selectedCategory, setSelectedCategory, hasBookmarkedWines } = useWine()
+  const { selectedCategory, setSelectedCategory, hasBookmarkedWines, wines } = useWine()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [categories, setCategories] = useState<{ id: string; label: string; fixed?: boolean }[]>([
+    { id: "all", label: "All Wines", fixed: true },
+    { id: "glass", label: "By the Glass" },
+    { id: "favorites", label: "Guardado", fixed: true },
+  ])
+
+  // Añadir categorías dinámicas basadas en los datos
+  useEffect(() => {
+    if (wines && wines.length > 0) {
+      // Extraer categorías únicas de los vinos
+      const uniqueCategories = new Set<string>()
+
+      wines.forEach((wine) => {
+        if (wine.estilo && wine.estilo.trim() !== "") {
+          uniqueCategories.add(wine.estilo.trim())
+        }
+        if (wine.tipo && wine.tipo.trim() !== "") {
+          uniqueCategories.add(wine.tipo.trim())
+        }
+      })
+
+      // Convertir a array y ordenar alfabéticamente
+      const sortedCategories = Array.from(uniqueCategories).sort()
+
+      // Crear el array final de categorías con las fijas al principio y final
+      const newCategories = [
+        { id: "all", label: "All Wines", fixed: true },
+        { id: "glass", label: "By the Glass" },
+        ...sortedCategories.map((cat) => ({
+          id: cat.toLowerCase().replace(/\s+/g, "-"),
+          label: cat,
+        })),
+        { id: "favorites", label: "Guardado", fixed: true },
+      ]
+
+      setCategories(newCategories)
+    }
+  }, [wines])
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
