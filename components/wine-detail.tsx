@@ -33,7 +33,7 @@ export function WineDetail() {
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => setSelectedWine(null)}
-            className="p-2 rounded-full border border-border e-ink-button"
+            className="p-2 rounded-full border border-gray-300 e-ink-button"
             aria-label="Back to wine list"
           >
             <ArrowLeft size={20} />
@@ -41,12 +41,10 @@ export function WineDetail() {
 
           <button
             onClick={handleBookmarkClick}
-            className={`p-2 rounded-full border border-border e-ink-button ${
-              animateBookmark ? "bookmark-animation" : ""
-            }`}
+            className={`p-2 rounded-full border border-gray-300 e-ink-button ${animateBookmark ? "bookmark-animation" : ""}`}
             aria-label={bookmarked ? "Remove from favorites" : "Add to favorites"}
           >
-            <Bookmark size={20} className={bookmarked ? "fill-accent text-accent" : ""} />
+            <Bookmark size={20} className={bookmarked ? "fill-[#4A0404] text-[#4A0404]" : ""} />
           </button>
         </div>
 
@@ -56,7 +54,7 @@ export function WineDetail() {
             <h1 className="text-2xl font-bold">{selectedWine.nombre}</h1>
             <p className="text-lg">{selectedWine.productor}</p>
 
-            <div className="flex flex-wrap gap-x-2 mt-2 text-sm text-foreground/70">
+            <div className="flex flex-wrap gap-x-2 mt-2 text-sm text-gray-600">
               {selectedWine.region && <span>{selectedWine.region}</span>}
               {selectedWine.region && selectedWine.pais && <span>•</span>}
               {selectedWine.pais && <span>{selectedWine.pais}</span>}
@@ -69,49 +67,49 @@ export function WineDetail() {
           <div className="grid grid-cols-2 gap-4">
             {selectedWine.uva && (
               <div>
-                <h3 className="font-medium text-sm text-foreground/70">Grape</h3>
+                <h3 className="font-medium text-sm text-gray-600">Grape</h3>
                 <p>{selectedWine.uva}</p>
               </div>
             )}
 
             {selectedWine.alcohol && (
               <div>
-                <h3 className="font-medium text-sm text-foreground/70">Alcohol</h3>
+                <h3 className="font-medium text-sm text-gray-600">Alcohol</h3>
                 <p>{selectedWine.alcohol}</p>
               </div>
             )}
 
             {selectedWine.enologo && (
               <div>
-                <h3 className="font-medium text-sm text-foreground/70">Winemaker</h3>
+                <h3 className="font-medium text-sm text-gray-600">Winemaker</h3>
                 <p>{selectedWine.enologo}</p>
               </div>
             )}
 
             {selectedWine.tipo && (
               <div>
-                <h3 className="font-medium text-sm text-foreground/70">Type</h3>
+                <h3 className="font-medium text-sm text-gray-600">Type</h3>
                 <p>{selectedWine.tipo}</p>
               </div>
             )}
 
             {selectedWine.estilo && (
               <div>
-                <h3 className="font-medium text-sm text-foreground/70">Style</h3>
+                <h3 className="font-medium text-sm text-gray-600">Style</h3>
                 <p>{selectedWine.estilo}</p>
               </div>
             )}
 
             {selectedWine.altitud && (
               <div>
-                <h3 className="font-medium text-sm text-foreground/70">Altitude</h3>
+                <h3 className="font-medium text-sm text-gray-600">Altitude</h3>
                 <p>{selectedWine.altitud}</p>
               </div>
             )}
           </div>
 
           {/* Prices */}
-          <div className="border-t border-b border-border py-4">
+          <div className="border-t border-b border-gray-200 py-4">
             <h3 className="font-medium mb-2">Prices</h3>
             <div className="space-y-2">
               {selectedWine.precio && (
@@ -169,19 +167,19 @@ export function WineDetail() {
                 {selectedWine.vista && (
                   <div>
                     <h4 className="text-sm font-medium">Vista:</h4>
-                    <p className="text-foreground/90">{selectedWine.vista}</p>
+                    <p className="text-gray-800">{selectedWine.vista}</p>
                   </div>
                 )}
                 {selectedWine.nariz && (
                   <div>
                     <h4 className="text-sm font-medium">Nariz:</h4>
-                    <p className="text-foreground/90">{selectedWine.nariz}</p>
+                    <p className="text-gray-800">{selectedWine.nariz}</p>
                   </div>
                 )}
                 {selectedWine.boca && (
                   <div>
                     <h4 className="text-sm font-medium">Boca:</h4>
-                    <p className="text-foreground/90">{selectedWine.boca}</p>
+                    <p className="text-gray-800">{selectedWine.boca}</p>
                   </div>
                 )}
               </div>
@@ -192,7 +190,7 @@ export function WineDetail() {
           {selectedWine.maridaje && (
             <div>
               <h3 className="font-medium mb-2">Recommended Pairing</h3>
-              <p className="text-foreground/90">{selectedWine.maridaje}</p>
+              <p className="text-gray-800">{selectedWine.maridaje}</p>
             </div>
           )}
 
@@ -200,7 +198,7 @@ export function WineDetail() {
           {selectedWine.otros && (
             <div>
               <h3 className="font-medium mb-2">Additional Information</h3>
-              <p className="text-foreground/90">{selectedWine.otros}</p>
+              <p className="text-gray-800">{selectedWine.otros}</p>
             </div>
           )}
         </div>

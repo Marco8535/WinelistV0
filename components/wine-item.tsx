@@ -41,6 +41,13 @@ export function WineItem({ wine }: WineItemProps) {
     const location = []
     if (wine.region) location.push(wine.region)
     if (wine.pais) location.push(wine.pais)
+    // If we have a combined field like Pais_Region_Origen, use that
+    if (wine.region?.includes(",") && !wine.pais) {
+      const regionParts = wine.region.split(",")
+      if (regionParts.length > 1) {
+        location.push(regionParts.join(", "))
+      }
+    }
 
     if (location.length > 0) {
       parts.push(location.join(", "))
@@ -57,7 +64,7 @@ export function WineItem({ wine }: WineItemProps) {
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <h3 className="text-xl font-bold">{wine.nombre}</h3>
-            <p className="text-sm text-foreground/70 mt-1">{formatSubDetails()}</p>
+            <p className="text-sm text-gray-600 mt-1">{formatSubDetails()}</p>
           </div>
 
           <div className="flex flex-col items-end">
@@ -66,7 +73,7 @@ export function WineItem({ wine }: WineItemProps) {
               className={`p-1 e-ink-button ${animateBookmark ? "bookmark-animation" : ""}`}
               aria-label={bookmarked ? "Remove from favorites" : "Add to favorites"}
             >
-              <Bookmark size={20} className={bookmarked ? "fill-accent text-accent" : ""} />
+              <Bookmark size={20} className={bookmarked ? "fill-[#4A0404] text-[#4A0404]" : ""} />
             </button>
           </div>
         </div>

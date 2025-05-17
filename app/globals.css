@@ -3,39 +3,78 @@
 @tailwind utilities;
 
 :root {
-  --background: 250 250 250;
-  --foreground: 33 37 41;
-  --accent: 0 51 102;
-  --muted: 74 85 104;
-  --border: 226 232 240;
-  --radius: 0.5rem;
+  --background: 248 248 248;
+  --foreground: 26 26 26;
+  --accent: 74 4 4;
+  --accent-foreground: 248 248 248;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  color: rgb(var(--foreground));
-  background: rgb(var(--background));
+  font-family: var(--font-lato), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-@layer base {
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: var(--font-playfair);
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom styles for e-ink optimization */
+.e-ink-button {
+  transition-property: color, background-color, border-color;
+  transition-duration: 200ms;
+  transition-timing-function: ease-in-out;
+}
+
+.e-ink-button:active {
+  background-color: #4a0404;
+  color: white;
+}
+
+.wine-item {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1.5rem 1rem;
+}
+
+.wine-item:last-child {
+  border-bottom: none;
+}
+
+.category-tab {
+  padding: 0.75rem 1rem;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.category-tab.active {
+  font-weight: 700;
+  border-bottom: 2px solid #4a0404;
+}
+
+/* Bookmark animation for e-ink */
+@keyframes bookmark-feedback {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
-/* Optimize for e-ink displays */
-* {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Subtle transitions for e-ink */
-.wine-card {
-  transition-property: box-shadow, border-color;
-  transition-duration: 300ms;
-  transition-timing-function: ease-in-out;
+.bookmark-animation {
+  animation: bookmark-feedback 300ms ease-in-out;
 }

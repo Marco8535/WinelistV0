@@ -1,78 +1,54 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import type { Wine } from "@/types/wine"
-import { WineCard } from "./wine-card"
-import { fetchWines, groupWinesByCategory } from "@/lib/fetch-wines"
+import { useWine } from "@/context/wine-context"
+import { WineItem } from "./wine-item"
+import { WineDetail } from "./wine-detail"
 
 export function WineList() {
-  const [groupedWines, setGroupedWines] = useState<Record<string, Wine[]>>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const loadWines = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const wines = await fetchWines()
-        const grouped = groupWinesByCategory(wines)
-
-        setGroupedWines(grouped)
-      } catch (err) {
-        console.error("Error loading wines:", err)
-        setError("Failed to load wine data. Please try again later.")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadWines()
-  }, [])
+  const { loading, error, filteredWines, selectedCategory, searchQuery, selectedWine } = useWine()
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-10">
-        <p className="text-lg">Cargando carta de vinos...</p>
+      <div className="flex-1 flex items-center justify-center p-8">
+        <p className="text-lg">Loading wine selection...</p>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center p-10">
-        <p className="text-lg text-red-600">Error: {error}</p>
+      <div className="flex-1 flex items-center justify-center p-8">
+        <p className="text-lg text-red-600">{error}</p>
       </div>
     )
   }
 
-  if (Object.keys(groupedWines).length === 0) {
+  if (filteredWines.length === 0) {
+    let message = "No wines match your current selection. Please adjust your search or filters."
+
+    if (selectedCategory === "favorites") {
+      message =
+        "You haven't bookmarked any wines yet. Tap the bookmark icon next to a wine to add it to your favorites."
+    }
+
     return (
-      <div className="flex items-center justify-center p-10">
-        <p className="text-lg">No hay vinos disponibles en la carta en este momento.</p>
+      <div className="flex-1 flex items-center justify-center p-8">
+        <p className="text-lg text-center max-w-md">{message}</p>
       </div>
     )
   }
 
-  // Get category names and sort them alphabetically
-  const sortedCategories = Object.keys(groupedWines).sort((a, b) => a.localeCompare(b))
+  if (selectedWine) {
+    return <WineDetail />
+  }
 
   return (
-    <div className="space-y-12">
-      {sortedCategories.map((category) => (
-        <section key={category} className="wine-section">
-          <h2 className="text-2xl font-serif font-medium text-[#003366] dark:text-blue-400 mb-6 pb-2 border-b border-[#E2E8F0] dark:border-gray-700">
-            {category}
-          </h2>
-
-          <div className="space-y-6">
-            {groupedWines[category].map((wine) => (
-              <WineCard key={wine.id} wine={wine} />
-            ))}
-          </div>
-        </section>
-      ))}
+    <div className="flex-1 overflow-y-auto hide-scrollbar">
+      <ul>
+        {filteredWines.map((wine) => (
+          <WineItem key={wine.id} wine={wine} />
+        ))}
+      </ul>
     </div>
   )
 }

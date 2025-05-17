@@ -23,7 +23,7 @@ export interface Wine {
   estilo?: string // Style
   tipo?: string // Type (red, white, etc.)
   caracteristica?: string // Wine characteristic
-  categoria?: string // Sommelier category
+  enCarta?: boolean // If the wine is on the menu
   orden?: number // Display order
 }
 

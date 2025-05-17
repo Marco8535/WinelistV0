@@ -49,7 +49,7 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-white p-4 overflow-y-auto">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Filter Wines</h2>
         <button onClick={onClose} className="p-2 e-ink-button">
@@ -140,13 +140,10 @@ export function FilterPanel({ onClose }: FilterPanelProps) {
 
         {/* Action Buttons */}
         <div className="flex space-x-4 pt-4">
-          <button
-            onClick={applyFilters}
-            className="flex-1 py-3 bg-accent text-accent-foreground rounded-md e-ink-button"
-          >
+          <button onClick={applyFilters} className="flex-1 py-3 bg-[#4A0404] text-white rounded-md e-ink-button">
             Apply Filters
           </button>
-          <button onClick={resetFilters} className="flex-1 py-3 border border-border rounded-md e-ink-button">
+          <button onClick={resetFilters} className="flex-1 py-3 border border-gray-300 rounded-md e-ink-button">
             Reset Filters
           </button>
         </div>
