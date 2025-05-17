@@ -1,121 +1,131 @@
-import type { Wine } from "@/types/wine"
+// Archivo: lib/fetch-wines.ts
+
+import type { Wine } from "@/types/wine"; // Asegúrate que la ruta a tu archivo de tipos sea correcta.
+                                        // Si creaste lib/types.ts, sería: import type { Wine } from "./types";
 
 export async function fetchWines(): Promise<Wine[]> {
   try {
-    // URL del CSV público de Google Sheets
-    // Asegúrate de que tu hoja de cálculo esté publicada como CSV
     const csvUrl =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vSYJ_osaRfpE560QPeFdseyGCdyo0PQ10y0MutQYBaJXzk4b0oIs5twb1BliBePIANRiv0Qat_iftYF/pub?output=csv"
-
-    const response = await fetch(csvUrl)
-
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vSYJ_osaRfpE560QPeFdseyGCdyo0PQ10y0MutQYBaJXzk4b0oIs5twb1BliBePIANRiv0Qat_iftYF/pub?output=csv";
+    const response = await fetch(csvUrl);
     if (!response.ok) {
-      throw new Error(`Failed to fetch wine data: ${response.status}`)
+      throw new Error(`Failed to fetch wine data: ${response.status}`);
     }
-
-    const csvText = await response.text()
-    const wines = parseCSV(csvText)
-    return wines
+    const csvText = await response.text();
+    const wines = parseCSV(csvText);
+    return wines;
   } catch (error) {
-    console.error("Error fetching wine data:", error)
-    return []
+    console.error("Error fetching wine data:", error);
+    return [];
   }
+}
+
+function parseCSVLine(line: string): string[] { // Asegúrate que esta función exista
+  const values: string[] = [];
+  let currentValue = "";
+  let insideQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      insideQuotes = !insideQuotes;
+    } else if (char === "," && !insideQuotes) {
+      values.push(currentValue.trim());
+      currentValue = "";
+    } else {
+      currentValue += char;
+    }
+  }
+  values.push(currentValue.trim());
+  return values;
 }
 
 function parseCSV(csvText: string): Wine[] {
-  const lines = csvText.split("\n")
+  const lines = csvText.split("\n");
   if (lines.length <= 1) {
-    return []
+    return [];
   }
 
-  const headers = lines[0].split(",").map((header) => header.trim())
-  const wines: Wine[] = []
+  const headers = lines[0].split(",").map((header) => header.trim());
+  const wines: Wine[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue
+    const line = lines[i].trim();
+    if (!line) continue;
 
-    const values = parseCSVLine(lines[i])
-    if (values.length < headers.length / 2) continue // Skip malformed lines
+    const values = parseCSVLine(line);
 
-    const wine: any = { id: `wine-${i}` }
+    // Corrección en la generación del ID para que sea JavaScript válido:
+    const wine: any = { id: `wine-${Date.now()}-${i}` };
+
 
     headers.forEach((header, index) => {
-      if (values[index] !== undefined) {
-        const key = mapHeaderToWineProperty(header)
-        if (key) {
-          // Convert boolean strings to actual booleans
-          if (values[index].toLowerCase() === "true") {
-            wine[key] = true
-          } else if (values[index].toLowerCase() === "false") {
-            wine[key] = false
+      const rawValue = values[index] ? values[index].trim() : "";
+      const key = mapHeaderToWineProperty(header);
+
+      if (key) {
+        let processedValue: any = rawValue;
+        if (key === 'enCarta') {
+          processedValue = rawValue.toLowerCase() === "true";
+        } else if (key === 'orden') {
+          const num = parseInt(rawValue, 10);
+          processedValue = isNaN(num) ? null : num;
+        } else if (key === 'precio' || key === 'precioCopa') {
+          const num = parseFloat(rawValue.replace(',', '.'));
+          processedValue = isNaN(num) ? null : num;
+        } else if (key === 'ano') {
+          if (rawValue.toUpperCase() === 'N/V') {
+            processedValue = 'N/V';
+          } else if (rawValue) {
+            const yearNum = parseInt(rawValue, 10);
+            processedValue = isNaN(yearNum) ? rawValue : yearNum;
           } else {
-            wine[key] = values[index]
+            processedValue = null;
           }
         }
+        wine[key] = processedValue;
       }
-    })
+    });
 
-    // Only add wines that have at least a name and are in the menu
-    if (wine.nombre && wine.enCarta !== false) {
-      wines.push(wine as Wine)
+    if (wine.nombre) {
+      wines.push(wine as Wine);
     }
   }
-
-  return wines
+  return wines;
 }
 
-function parseCSVLine(line: string): string[] {
-  const values: string[] = []
-  let currentValue = ""
-  let insideQuotes = false
+// Corregir y simplificar mapHeaderToWineProperty:
+function mapHeaderToWineProperty(header: string): keyof Wine | null {
+  const normalizedHeader = header.trim().toUpperCase(); // Normalizar ANTES de buscar en el mapa
 
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i]
+  // Un ÚNICO mapa. Las claves (izquierda) deben ser los encabezados del CSV en MAYÚSCULAS.
+  // Los valores (derecha) deben ser las propiedades de tu 'interface Wine'.
+  const headerMap: Record<string, keyof Wine> = {
+    "NOMBRE_VINO_COMPLETO": "nombre",
+    "BODEGA": "productor",
+    "COSECHA": "ano",
+    "PRECIO_BOTELLA_RESTAURANTE R1": "precio",
+    "PRECIO R1 COPA": "precioCopa",
+    // ¡IMPORTANTE! Revisa esta línea:
+    // Si tu CSV dice "EnCarta_Restaurante_1", entonces "ENCARTA_RESTAURANTE_1" está bien.
+    // Si tu CSV dice "EnCarta_Restaurante1" (sin el _ antes del 1), usa "ENCARTA_RESTAURANTE1".
+    "ENCARTA_RESTAURANTE_1": "enCarta", // O "ENCARTA_RESTAURANTE1": "enCarta",
+    "PAIS_REGION_ORIGEN": "region",
+    "CATEGORIA_SOMMELIER": "estilo",
+    "TIPO_VINO": "tipo",
+    "VARIEDAD": "uva",
+    "ALCOHOL": "alcohol",
+    "ENOLOGO": "enologo",
+    "VISTA": "vista",
+    "NARIZ": "nariz",
+    "BOCA": "boca",
+    "MARIDAJE": "maridaje",
+    "OTROS": "otros",
+    "ALTITUD": "altitud",
+    "ORDEN_VISUALIZACION_RESTAURANTE": "orden",
+    "SKU_LAZZY": "idInterno", // Cambiado de "id" a "idInterno" como sugerí antes
+  };
 
-    if (char === '"') {
-      insideQuotes = !insideQuotes
-    } else if (char === "," && !insideQuotes) {
-      values.push(currentValue.trim())
-      currentValue = ""
-    } else {
-      currentValue += char
-    }
-  }
-
-  values.push(currentValue.trim())
-  return values
-}
-
-// Helper function to map spreadsheet headers to Wine properties
-function mapHeaderToWineProperty(header: string): string | null {
-  // Este mapeo debe ajustarse según los encabezados reales de tu hoja de cálculo
-  const headerMap: Record<string, string> = {
-    // Mapeos específicos según las instrucciones
-    Nombre_Vino_Completo: "nombre",
-    Bodega: "productor",
-    Cosecha: "ano",
-    "Precio_Botella_Restaurante R1": "precio",
-    "Precio R1 copa": "precioCopa",
-    EnCarta_Restaurante1: "enCarta",
-
-    // Otros mapeos que pueden ser útiles
-    Pais_Region_Origen: "region",
-    Categoria_Sommelier: "estilo",
-    Tipo_Vino: "tipo",
-    Variedad: "uva",
-    Alcohol: "alcohol",
-    Enologo: "enologo",
-    Vista: "vista",
-    Nariz: "nariz",
-    Boca: "boca",
-    Maridaje: "maridaje",
-    Otros: "otros",
-    Altitud: "altitud",
-    Orden_Visualizacion_Restaurante: "orden",
-    SKU_LAZZY: "id",
-  }
-
-  // Intenta encontrar una coincidencia en nuestro mapeo
-  const normalizedHeader = header.trim()
-  return headerMap[normalizedHeader] || null
+  return headerMap[normalizedHeader] || null;
 }
