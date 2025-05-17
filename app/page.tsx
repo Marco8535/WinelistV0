@@ -1,13 +1,20 @@
-import WineList from "@/components/wine-list"
-import { RestaurantLogo } from "@/components/restaurant-logo"
+"use client"
+
+import { Header } from "@/components/header"
+import { CategoryNavigation } from "@/components/category-navigation"
+import { ActionBar } from "@/components/action-bar"
+import { WineList } from "@/components/wine-list"
+import { WineProvider } from "@/context/wine-context"
 
 export default function Home() {
   return (
-    <main className="container mx-auto py-10 px-4">
-      <div className="flex justify-center mb-10">
-        <RestaurantLogo />
+    <WineProvider>
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <CategoryNavigation />
+        <ActionBar />
+        <WineList />
       </div>
-      <WineList />
-    </main>
+    </WineProvider>
   )
 }
