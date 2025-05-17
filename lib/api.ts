@@ -1,53 +1,56 @@
 import type { Wine, WineCategory } from "@/types/wine"
 
+// This file would contain the actual API integration code
+// Below are example functions that would be implemented
+
 /**
  * Fetch all wines from the API
  */
 export async function fetchAllWines(): Promise<Wine[]> {
-  const response = await fetch("/api/wines")
+  // TODO: Implement actual API call
+  // Example:
+  // const response = await fetch('/api/wines');
+  // if (!response.ok) throw new Error('Failed to fetch wines');
+  // return response.json();
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch wines: ${response.statusText}`)
-  }
-
-  return response.json()
+  throw new Error("Not implemented")
 }
 
 /**
  * Fetch wines by category
  */
 export async function fetchWinesByCategory(category: WineCategory): Promise<Wine[]> {
-  const response = await fetch(`/api/wines?category=${category}`)
+  // TODO: Implement actual API call
+  // Example:
+  // const response = await fetch(`/api/wines?category=${category}`);
+  // if (!response.ok) throw new Error('Failed to fetch wines');
+  // return response.json();
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch wines by category: ${response.statusText}`)
-  }
-
-  return response.json()
+  throw new Error("Not implemented")
 }
 
 /**
  * Search wines by query
  */
 export async function searchWines(query: string): Promise<Wine[]> {
-  const response = await fetch(`/api/wines?q=${encodeURIComponent(query)}`)
+  // TODO: Implement actual API call
+  // Example:
+  // const response = await fetch(`/api/wines/search?q=${encodeURIComponent(query)}`);
+  // if (!response.ok) throw new Error('Failed to search wines');
+  // return response.json();
 
-  if (!response.ok) {
-    throw new Error(`Failed to search wines: ${response.statusText}`)
-  }
-
-  return response.json()
+  throw new Error("Not implemented")
 }
 
 /**
  * Fetch a single wine by ID
  */
 export async function fetchWineById(id: string): Promise<Wine> {
-  const response = await fetch(`/api/wines/${id}`)
+  // TODO: Implement actual API call
+  // Example:
+  // const response = await fetch(`/api/wines/${id}`);
+  // if (!response.ok) throw new Error('Failed to fetch wine');
+  // return response.json();
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch wine: ${response.statusText}`)
-  }
-
-  return response.json()
+  throw new Error("Not implemented")
 }

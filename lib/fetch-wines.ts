@@ -1,6 +1,26 @@
 import type { Wine } from "@/types/wine"
+import { fetchWinesFromSupabase } from "./supabase"
 
 export async function fetchWines(): Promise<Wine[]> {
+  try {
+    // Use Supabase to fetch wines
+    const wines = await fetchWinesFromSupabase()
+
+    // If no wines are returned from Supabase, fall back to CSV
+    if (wines.length === 0) {
+      return fetchWinesFromCSV()
+    }
+
+    return wines
+  } catch (error) {
+    console.error("Error fetching wine data from Supabase:", error)
+    // Fall back to CSV if Supabase fails
+    return fetchWinesFromCSV()
+  }
+}
+
+// Keep the original CSV fetching as a fallback
+async function fetchWinesFromCSV(): Promise<Wine[]> {
   try {
     const response = await fetch(
       "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Prueba%20Master%20vinos%20app%20120525%20-%20Hoja%201-cvPni1lFLbSjwDZR37C9uYZGmNY9vk.csv",
@@ -14,7 +34,7 @@ export async function fetchWines(): Promise<Wine[]> {
     const wines = parseCSV(csvText)
     return wines
   } catch (error) {
-    console.error("Error fetching wine data:", error)
+    console.error("Error fetching wine data from CSV:", error)
     return []
   }
 }
