@@ -78,9 +78,12 @@ function parseCSV(csvText: string): Wine[] {
         } else if (key === 'orden') {
           const num = parseInt(rawValue, 10);
           processedValue = isNaN(num) ? null : num;
-        } else if (key === 'precio' || key === 'precioCopa') { // Procesamiento para precio y precioCopa
-          const num = parseFloat(rawValue.replace(',', '.'));
-          processedValue = isNaN(num) ? null : num;
+        } else if (key === 'precio' || key === 'precioCopa') {
+  // Quitamos el símbolo '$' y cualquier espacio en blanco al inicio/final
+  // También reemplazamos la coma decimal (si la usas) por un punto.
+  const cleanedValue = rawValue.replace('$', '').replace(',', '.').trim();
+  const num = parseFloat(cleanedValue);
+  processedValue = isNaN(num) ? null : num;
         } else if (key === 'ano') {
           if (rawValue.toUpperCase() === 'N/V') {
             processedValue = 'N/V';

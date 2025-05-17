@@ -39,35 +39,58 @@ export function processAndGroupWines(wines: Wine[]): GroupedWineData {
     return (vinoA.nombre || "").localeCompare(vinoB.nombre || "");
   });
 
-  // -------- PASO 3: AGRUPACIÓN VISUAL (CON PERTENENCIA MÚLTIPLE) --------
-  const categoriasTemporales: Record<string, Wine[]> = {}; // <--- ¡AQUÍ SE DEFINE!
+  // -------- PASO 3: AGRUPACIÓN VISUAL (CORREGIDA PARA ASIGNACIÓN Y DEDUPLICACIÓN) --------
+const categoriasTemporales: Record<string, Wine[]> = {};
+const vinosYaProcesadosPorCategoria = new Map<string, Set<string>>(); // Mapa: nombreCategoria -> Set de identificadoresUnicosDeVino
 
-  sortedWines.forEach(vino => {
-    const categoriasParaEsteVino = new Set<string>();
+sortedWines.forEach(vino => {
+  // Definir el identificador único del PRODUCTO vino.
+  // Priorizamos idInterno (SKU_LAZZY). Si no existe, usamos nombre+productor.
+  const identificadorUnicoProducto = vino.idInterno && vino.idInterno.trim() !== ""
+    ? vino.idInterno.trim()
+    : `${vino.nombre?.trim()}-${vino.productor?.trim()}`;
 
-    // 1. Agrupar por Categoria_Sommelier (vino.estilo)
-    if (vino.estilo && vino.estilo.trim() !== "") {
-      categoriasParaEsteVino.add(vino.estilo.trim());
+  const categoriasParaEsteVino = new Set<string>(); // Nombres de las categorías a las que este vino podría pertenecer
+
+  // 1. Categoría por Categoria_Sommelier (vino.estilo)
+  if (vino.estilo && vino.estilo.trim() !== "") {
+    categoriasParaEsteVino.add(vino.estilo.trim());
+  }
+
+  // 2. Categoría por Tipo_Vino (vino.tipo)
+  if (vino.tipo && vino.tipo.trim() !== "") {
+    categoriasParaEsteVino.add(vino.tipo.trim());
+  }
+
+  // 3. Si no tiene ni estilo ni tipo con valor, va a "Otros Vinos"
+  if (categoriasParaEsteVino.size === 0) {
+    categoriasParaEsteVino.add('Otros Vinos');
+  }
+
+  // Añadir el vino a cada una de sus categorías identificadas, evitando duplicados del MISMO PRODUCTO VINO
+  categoriasParaEsteVino.forEach(nombreCategoria => {
+    if (!categoriasTemporales[nombreCategoria]) {
+      categoriasTemporales[nombreCategoria] = [];
+      vinosYaProcesadosPorCategoria.set(nombreCategoria, new Set<string>());
     }
 
-    // 2. Agrupar también por Tipo_Vino (vino.tipo)
-    if (vino.tipo && vino.tipo.trim() !== "") {
-      categoriasParaEsteVino.add(vino.tipo.trim());
-    }
-
-    // 3. Si no se asignó a ninguna categoría basada en estilo o tipo, va a "Otros Vinos"
-    if (categoriasParaEsteVino.size === 0) {
-      categoriasParaEsteVino.add('Otros Vinos');
-    }
-
-    // Añadir el vino a cada una de las categorías identificadas para él
-    categoriasParaEsteVino.forEach(nombreCategoria => {
-      if (!categoriasTemporales[nombreCategoria]) { // Se usa categoriasTemporales
-        categoriasTemporales[nombreCategoria] = [];
+    // Verificar si este PRODUCTO vino ya fue añadido a ESTA categoría específica
+    if (!vinosYaProcesadosPorCategoria.get(nombreCategoria)!.has(identificadorUnicoProducto)) {
+      categoriasTemporales[nombreCategoria].push(vino);
+      vinosYaProcesadosPorCategoria.get(nombreCategoria)!.add(identificadorUnicoProducto);
+      
+      // Log para depuración de la asignación
+      if (vino.nombre === "A lisa" || vino.nombre === "Alma Roja" || vino.nombre === "Fuego Andino") {
+        console.log(`[processWines-AGRUPACION] Añadiendo "${vino.nombre}" (ID Producto: ${identificadorUnicoProducto}) a Categoría: "${nombreCategoria}"`);
       }
-      categoriasTemporales[nombreCategoria].push(vino); // Se usa categoriasTemporales
-    });
+    } else {
+      // Log para depuración si se evita un duplicado
+      if (vino.nombre === "A lisa" || vino.nombre === "Alma Roja" || vino.nombre === "Fuego Andino") {
+        console.log(`[processWines-AGRUPACION] EVITADO DUPLICADO: "${vino.nombre}" (ID Producto: ${identificadorUnicoProducto}) ya existe en Categoría: "${nombreCategoria}"`);
+      }
+    }
   });
+});
 
   // -------- PASO 4: ORDENAR LAS CATEGORÍAS Y PREPARAR EL RESULTADO FINAL --------
   const resultadoFinal: GroupedWineData = Object.keys(categoriasTemporales) // Se usa categoriasTemporales
