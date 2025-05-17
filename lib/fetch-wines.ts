@@ -49,7 +49,6 @@ function parseCSV(csvText: string): Wine[] {
 
   const headers = lines[0].split(",").map((header) => header.trim());
 
-  // ----> LOG PARA VER CABECERAS Y SU MAPEO <----
   console.log("----------------------------------------------------");
   console.log("[parseCSV] CABECERAS DETECTADAS EN EL CSV Y SU MAPEO:");
   headers.forEach(h => {
@@ -57,7 +56,6 @@ function parseCSV(csvText: string): Wine[] {
     console.log(`  -> Cabecera Original CSV: "${h}"   --- Mapeada a Propiedad Wine --->   "${mappedKey || "NO MAPEADA"}"`);
   });
   console.log("----------------------------------------------------");
-  // ----> FIN DE LOG PARA CABECERAS <----
 
   const wines: Wine[] = [];
 
@@ -98,11 +96,23 @@ function parseCSV(csvText: string): Wine[] {
     });
 
     if (wine.nombre) {
-      // Log para los primeros vinos procesados, mostrando el valor crudo de enCarta
-      if (i < 6) { // Loguea los primeros 5 vinos (índice 1 a 5)
+      if (i < 6) {
         const enCartaColumnIndex = headers.findIndex(h => mapHeaderToWineProperty(h) === 'enCarta');
-        const rawEnCartaValue = enCartaColumnIndex !== -1 ? values[enCartaColumnIndex] : "COLUMNA_ENCARTA_NO_ENCONTRADA";
-        console.log(`[parseCSV] Procesando vino: ${wine.nombre || "SIN_NOMBRE"}, enCarta (procesado): ${wine.enCarta} (tipo: ${typeof wine.enCarta}), valor crudo para enCarta: '${rawEnCartaValue}', orden: ${wine.orden}`);
+        const rawEnCartaValue = enCartaColumnIndex !== -1 ? values[enCartaColumnIndex] : "COLUMNA_ENCARTA_NO_ENCONTRADA_O_NO_MAPEADA";
+        
+        const estiloColumnIndex = headers.findIndex(h => mapHeaderToWineProperty(h) === 'estilo');
+        const rawEstiloValue = estiloColumnIndex !== -1 ? values[estiloColumnIndex] : "COLUMNA_ESTILO_NO_ENCONTRADA_O_NO_MAPEADA";
+
+        const tipoColumnIndex = headers.findIndex(h => mapHeaderToWineProperty(h) === 'tipo');
+        const rawTipoValue = tipoColumnIndex !== -1 ? values[tipoColumnIndex] : "COLUMNA_TIPO_NO_ENCONTRADA_O_NO_MAPEADA";
+
+        console.log(
+          `[parseCSV] Vino: ${wine.nombre || "SIN_NOMBRE"} | ` +
+          `enCarta: ${wine.enCarta} (crudo:'${rawEnCartaValue}') | ` +
+          `Estilo (Cat.Somm): '${wine.estilo}' (crudo:'${rawEstiloValue}') | ` +
+          `Tipo: '${wine.tipo}' (crudo:'${rawTipoValue}') | ` +
+          `Orden: ${wine.orden}`
+        );
       }
       wines.push(wine as Wine);
     }
@@ -113,37 +123,55 @@ function parseCSV(csvText: string): Wine[] {
 function mapHeaderToWineProperty(header: string): keyof Wine | null {
   const normalizedHeader = header.trim().toUpperCase();
   const headerMap: Record<string, keyof Wine> = {
+    // Mapeos principales confirmados por tus logs o altamente probables
+    "SKU_LAZZY": "idInterno",
     "NOMBRE_VINO_COMPLETO": "nombre",
     "BODEGA": "productor",
     "COSECHA": "ano",
+    "ORDEN_VISUALIZACION_RESTAURANTE": "orden",
+    "ALCOHOL": "alcohol",
+
+    // --- ¡CORRECCIONES CRÍTICAS BASADAS EN TUS ÚLTIMOS LOGS! ---
+    "ENCARTA_RESTAURANTE1": "enCarta",         // CSV tiene 'EnCarta_Restaurante1'
+    "CATEGORIA_SOMMELIER": "estilo",          // CSV tiene 'Categoría_Sommelier' (si es con tilde, usa "CATEGORÍA_SOMMELIER")
+                                              // Basado en el log "(Normalizada como: 'CATEGORÍA_SOMMELIER')", usa la tilde si así está en el CSV.
+                                              // Si dudas, usa la versión sin tilde primero, y si falla, prueba con tilde.
+                                              // Por seguridad, si el CSV la tiene con tilde, la clave aquí DEBE tenerla.
+                                              // Si tu log mostró 'CATEGORÍA_SOMMELIER' (con tilde) como NO MAPEADA, entonces la clave en el mapa debe ser "CATEGORÍA_SOMMELIER".
+                                              // Vamos a asumir que es con tilde por tu log:
+    "CATEGORÍA_SOMMELIER": "estilo",           // <--- Ajustado para incluir tilde basado en el log de "NO MAPEADA"
+    "TIPOVINO": "tipo",                       // CSV tiene 'TipoVino'
+
+    // --- Otros mapeos que tenías (verifica si las cabeceras CSV son correctas) ---
     "PRECIO_BOTELLA_RESTAURANTE R1": "precio",
     "PRECIO R1 COPA": "precioCopa",
-    // --- ¡ATENCIÓN AQUÍ! ---
-    // Cambia "ENCARTA_RESTAURANTE_1" por el nombre EXACTO de tu columna en el CSV (en mayúsculas)
-    // Basado en tu imagen del CSV, parece que la columna es "EnCarta_Restaurante_1"
-    // Si fuera "EnCarta_Restaurante1" (sin el último guion bajo), deberías poner:
-    // "ENCARTA_RESTAURANTE1": "enCarta",
-    "ENCARTA_RESTAURANTE1": "enCarta", // <-- Revisa esta clave con tu archivo CSV
-    // ------------------------
-    "PAIS_REGION_ORIGEN": "region",
-    "CATEGORIA_SOMMELIER": "estilo",
-    "TIPO_VINO": "tipo",
-    "VARIEDAD": "uva",
-    "ALCOHOL": "alcohol",
-    "ENOLOGO": "enologo",
+    "PAIS_REGION_ORIGEN": "region",         // Verifica si esta es la cabecera correcta en tu CSV para la región
     "VISTA": "vista",
     "NARIZ": "nariz",
     "BOCA": "boca",
-    "MARIDAJE": "maridaje",
     "OTROS": "otros",
     "ALTITUD": "altitud",
-    "ORDEN_VISUALIZACION_RESTAURANTE": "orden",
-    "SKU_LAZZY": "idInterno",
+
+    // --- Mapeos añadidos basados en tus logs de "NO MAPEADA" (si quieres usarlos) ---
+    "CEPA": "uva",                             // CSV tiene 'Cepa'
+    // "ENÓLOGO": "enologo",                   // CSV tiene 'Enólogo'. Asegúrate que 'enologo' exista en tu interface Wine.
+                                              // Si la cabecera CSV es "Enologo" (sin tilde), usa "ENOLOGO".
+    // "MARIDAJES": "maridaje",                // CSV tiene 'Maridajes'. Asegúrate que 'maridaje' exista en tu interface Wine.
+                                              // Si la cabecera CSV es "Maridaje" (singular), usa "MARIDAJE".
+
+    // Las siguientes son otras cabeceras que tus logs mostraron como "NO MAPEADA".
+    // Si necesitas alguna, añádela aquí y a tu interface Wine.
+    // "CARACTERÍSTICA DEL VINO": "propiedadCorrespondiente",
+    // "NOMBRE": "propiedadCorrespondiente", // Ojo si es diferente a NOMBRE_VINO_COMPLETO
+    // "DESCRIPCIÓN": "propiedadCorrespondiente",
+    // "REGIÓN 1": "propiedadCorrespondiente",
+    // "NOTAS DE CATA": "propiedadCorrespondiente",
   };
 
   const mappedKey = headerMap[normalizedHeader];
-  if (!mappedKey && header.trim() !== "" && !header.startsWith("FIELD")) { // Ignora si la cabecera es FIELD seguito de número.
-    console.warn(`[mapHeaderToWineProperty] Cabecera del CSV no mapeada: '${header}' (Normalizada como: '${normalizedHeader}')`);
-  }
+  // Descomenta el siguiente if si quieres un log explícito de cabeceras no encontradas en el mapa
+  // if (!mappedKey && normalizedHeader !== "" && !normalizedHeader.startsWith("FIELD")) {
+  //   console.warn(`[mapHeaderToWineProperty] ATENCIÓN: Cabecera CSV "${header}" (normalizada a "${normalizedHeader}") no tiene un mapeo definido en headerMap.`);
+  // }
   return mappedKey || null;
 }
