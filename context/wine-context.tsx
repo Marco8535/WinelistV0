@@ -4,88 +4,6 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import type { Wine, WineCategory, WineFilter } from "@/types/wine"
 import { fetchWines } from "@/lib/fetch-wines"
 
-// Mock data for UI development - would be replaced with API calls
-const MOCK_WINES: Wine[] = [
-  {
-    id: "1",
-    nombre: "Gran Reserva Malbec",
-    productor: "Bodega Catena Zapata",
-    region: "Mendoza",
-    pais: "Argentina",
-    ano: "2018",
-    uva: "Malbec",
-    alcohol: "14.5%",
-    enologo: "Laura Catena",
-    precio: "$85",
-    precioCopaR1: "$22",
-    precioCopaR2: "$15",
-    vista: "Rojo intenso con reflejos violáceos",
-    nariz: "Aromas a frutos negros, vainilla y especias",
-    boca: "Taninos suaves, final persistente",
-    maridaje: "Carnes rojas, cordero",
-    estilo: "Tinto de cuerpo completo",
-    tipo: "Tinto",
-    caracteristica: "Vino Tinto Malbec",
-  },
-  {
-    id: "2",
-    nombre: "Chardonnay Reserva",
-    productor: "Viña Concha y Toro",
-    region: "Valle de Casablanca",
-    pais: "Chile",
-    ano: "2020",
-    uva: "Chardonnay",
-    alcohol: "13.5%",
-    precio: "$45",
-    precioCopaR1: "$12",
-    vista: "Amarillo pálido con reflejos verdosos",
-    nariz: "Notas de frutas tropicales y vainilla",
-    boca: "Fresco, con buena acidez y final largo",
-    maridaje: "Pescados, mariscos, quesos suaves",
-    estilo: "Blanco con crianza en barrica",
-    tipo: "Blanco",
-    caracteristica: "Vino Blanco Chardonnay",
-  },
-  {
-    id: "3",
-    nombre: "Brut Nature Rosé",
-    productor: "Champagne Billecart-Salmon",
-    region: "Champagne",
-    pais: "Francia",
-    ano: "NV",
-    uva: "Pinot Noir, Chardonnay",
-    alcohol: "12%",
-    precio: "$120",
-    precioCopaR1: "$undefined",
-    vista: "Rosa pálido con burbujas finas",
-    nariz: "Fresas, frambuesas y notas de pan tostado",
-    boca: "Fresco, elegante, con final largo",
-    maridaje: "Aperitivos, mariscos, postres de frutas",
-    estilo: "Espumoso Brut Nature",
-    tipo: "Espumante",
-    caracteristica: "Vino Espumante Rosé",
-  },
-  {
-    id: "4",
-    nombre: "Rosé de Provence",
-    productor: "Château Minuty",
-    region: "Provence",
-    pais: "Francia",
-    ano: "2021",
-    uva: "Grenache, Cinsault, Syrah",
-    alcohol: "12.5%",
-    precio: "$55",
-    precioCopaR1: "$14",
-    vista: "Rosa pálido con reflejos salmón",
-    nariz: "Frutas rojas frescas y cítricos",
-    boca: "Seco, fresco, con final mineral",
-    maridaje: "Ensaladas, pescados, cocina mediterránea",
-    estilo: "Rosado seco",
-    tipo: "Rosado",
-    caracteristica: "Vino Rosado",
-  },
-]
-
 interface WineContextType {
   wines: Wine[]
   loading: boolean
@@ -108,8 +26,8 @@ interface WineContextType {
 const WineContext = createContext<WineContextType | undefined>(undefined)
 
 export function WineProvider({ children }: { children: ReactNode }) {
-  const [wines, setWines] = useState<Wine[]>(MOCK_WINES)
-  const [loading, setLoading] = useState(false)
+  const [wines, setWines] = useState<Wine[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [bookmarkedWines, setBookmarkedWines] = useState<Set<string>>(new Set())
   const [selectedCategory, setSelectedCategory] = useState<WineCategory>("all")
@@ -117,17 +35,26 @@ export function WineProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<WineFilter>({})
   const [selectedWine, setSelectedWine] = useState<Wine | null>(null)
 
-  // Load wines from API
+  // Load wines from CSV
   useEffect(() => {
     async function loadWines() {
       try {
         setLoading(true)
         const data = await fetchWines()
-        setWines(data)
-        setLoading(false)
-      } catch (err) {
-        setError("Failed to load wine data. Please try again later.")
+
+        // Filtrar solo los vinos que están en la carta (EnCarta_Restaurante1 = true)
+        const availableWines = data.filter((wine) => wine.enCarta !== false)
+
+        if (availableWines.length === 0) {
+          setError("No se encontraron vinos disponibles en la carta. Verifica que la URL del CSV sea correcta.")
+        } else {
+          setWines(availableWines)
+          setError(null)
+        }
+      } catch (err: any) {
+        setError(`Error al cargar los datos de vinos: ${err.message}`)
         console.error(err)
+      } finally {
         setLoading(false)
       }
     }
@@ -171,82 +98,110 @@ export function WineProvider({ children }: { children: ReactNode }) {
 
   // Filter wines based on category, search query, and filters
   const filteredWines = wines.filter((wine) => {
-    // Only show wines that are on the menu (if the field exists)
-    if (wine.enCarta === false) return false
-
     // Filter by category
     if (selectedCategory === "favorites") {
       if (!bookmarkedWines.has(wine.id)) return false
     } else if (selectedCategory === "glass") {
-      if (!wine.precioCopaR1 && !wine.precioCopaR2 && !wine.precioCopaR3 && !wine.precioCopa) return false
+      if (!wine.precioCopa) return false
     } else if (selectedCategory === "red") {
+      const lowerTipo = wine.tipo?.toLowerCase() || ""
+      const lowerCaracteristica = wine.caracteristica?.toLowerCase() || ""
       if (
-        !wine.caracteristica?.toLowerCase().includes("tinto") &&
-        !wine.tipo?.toLowerCase().includes("tinto") &&
-        !wine.tipo?.toLowerCase().includes("red")
-      )
+        !lowerTipo.includes("tinto") &&
+        !lowerTipo.includes("red") &&
+        !lowerCaracteristica.includes("tinto") &&
+        !lowerCaracteristica.includes("red")
+      ) {
         return false
+      }
     } else if (selectedCategory === "white") {
+      const lowerTipo = wine.tipo?.toLowerCase() || ""
+      const lowerCaracteristica = wine.caracteristica?.toLowerCase() || ""
       if (
-        !wine.caracteristica?.toLowerCase().includes("blanco") &&
-        !wine.tipo?.toLowerCase().includes("blanco") &&
-        !wine.tipo?.toLowerCase().includes("white")
-      )
+        !lowerTipo.includes("blanco") &&
+        !lowerTipo.includes("white") &&
+        !lowerCaracteristica.includes("blanco") &&
+        !lowerCaracteristica.includes("white")
+      ) {
         return false
+      }
     } else if (selectedCategory === "sparkling") {
+      const lowerTipo = wine.tipo?.toLowerCase() || ""
+      const lowerCaracteristica = wine.caracteristica?.toLowerCase() || ""
       if (
-        !wine.caracteristica?.toLowerCase().includes("espumante") &&
-        !wine.caracteristica?.toLowerCase().includes("espumoso") &&
-        !wine.tipo?.toLowerCase().includes("espumante") &&
-        !wine.tipo?.toLowerCase().includes("espumoso") &&
-        !wine.tipo?.toLowerCase().includes("sparkling")
-      )
+        !lowerTipo.includes("espumante") &&
+        !lowerTipo.includes("espumoso") &&
+        !lowerTipo.includes("sparkling") &&
+        !lowerCaracteristica.includes("espumante") &&
+        !lowerCaracteristica.includes("espumoso") &&
+        !lowerCaracteristica.includes("sparkling")
+      ) {
         return false
+      }
     } else if (selectedCategory === "rose") {
+      const lowerTipo = wine.tipo?.toLowerCase() || ""
+      const lowerCaracteristica = wine.caracteristica?.toLowerCase() || ""
       if (
-        !wine.caracteristica?.toLowerCase().includes("rosado") &&
-        !wine.caracteristica?.toLowerCase().includes("rosé") &&
-        !wine.tipo?.toLowerCase().includes("rosado") &&
-        !wine.tipo?.toLowerCase().includes("rosé") &&
-        !wine.tipo?.toLowerCase().includes("rose")
-      )
+        !lowerTipo.includes("rosado") &&
+        !lowerTipo.includes("rosé") &&
+        !lowerTipo.includes("rose") &&
+        !lowerCaracteristica.includes("rosado") &&
+        !lowerCaracteristica.includes("rosé") &&
+        !lowerCaracteristica.includes("rose")
+      ) {
         return false
+      }
     }
 
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       const matchesSearch =
-        wine.nombre?.toLowerCase().includes(query) ||
-        wine.productor?.toLowerCase().includes(query) ||
-        wine.uva?.toLowerCase().includes(query) ||
-        wine.region?.toLowerCase().includes(query)
+        (wine.nombre?.toLowerCase() || "").includes(query) ||
+        (wine.productor?.toLowerCase() || "").includes(query) ||
+        (wine.uva?.toLowerCase() || "").includes(query) ||
+        (wine.region?.toLowerCase() || "").includes(query)
 
       if (!matchesSearch) return false
     }
 
     // Apply additional filters
     if (filters.region && filters.region.length > 0) {
-      const matchesRegion = filters.region.some((region) => wine.region?.toLowerCase().includes(region.toLowerCase()))
+      const wineRegion = wine.region?.toLowerCase() || ""
+      const matchesRegion = filters.region.some((region) => wineRegion.includes(region.toLowerCase()))
       if (!matchesRegion) return false
     }
 
     if (filters.grape && filters.grape.length > 0) {
-      const matchesGrape = filters.grape.some((grape) => wine.uva?.toLowerCase().includes(grape.toLowerCase()))
+      const wineGrape = wine.uva?.toLowerCase() || ""
+      const matchesGrape = filters.grape.some((grape) => wineGrape.includes(grape.toLowerCase()))
       if (!matchesGrape) return false
     }
 
     if (filters.style && filters.style.length > 0) {
-      const matchesStyle = filters.style.some((style) => wine.estilo?.toLowerCase().includes(style.toLowerCase()))
+      const wineStyle = wine.estilo?.toLowerCase() || ""
+      const matchesStyle = filters.style.some((style) => wineStyle.includes(style.toLowerCase()))
       if (!matchesStyle) return false
     }
 
     if (filters.type && filters.type.length > 0) {
-      const matchesType = filters.type.some((type) => wine.tipo?.toLowerCase().includes(type.toLowerCase()))
+      const wineType = wine.tipo?.toLowerCase() || ""
+      const matchesType = filters.type.some((type) => wineType.includes(type.toLowerCase()))
       if (!matchesType) return false
     }
 
     return true
+  })
+
+  // Sort wines by order if available, otherwise by name
+  const sortedFilteredWines = [...filteredWines].sort((a, b) => {
+    // First by order if available
+    if (a.orden !== undefined && b.orden !== undefined) {
+      return a.orden - b.orden
+    }
+
+    // Then by name
+    return (a.nombre || "").localeCompare(b.nombre || "")
   })
 
   const value = {
@@ -257,7 +212,7 @@ export function WineProvider({ children }: { children: ReactNode }) {
     selectedCategory,
     searchQuery,
     filters,
-    filteredWines,
+    filteredWines: sortedFilteredWines,
     selectedWine,
     toggleBookmark,
     setSelectedCategory,

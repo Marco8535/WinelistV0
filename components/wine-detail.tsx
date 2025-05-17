@@ -18,13 +18,28 @@ export function WineDetail() {
   if (!selectedWine) return null
 
   const handleBookmarkClick = () => {
-    toggleBookmark(selectedWine.id)
-    setAnimateBookmark(true)
+    if (selectedWine) {
+      toggleBookmark(selectedWine.id)
+      setAnimateBookmark(true)
 
-    // Reset animation after it completes
-    setTimeout(() => {
-      setAnimateBookmark(false)
-    }, 300)
+      // Reset animation after it completes
+      setTimeout(() => {
+        setAnimateBookmark(false)
+      }, 300)
+    }
+  }
+
+  // Format price display
+  const formatPrice = (price: string | undefined) => {
+    if (!price) return ""
+
+    // If price is already formatted with currency symbol, return as is
+    if (price.startsWith("$") || price.startsWith("€")) {
+      return price
+    }
+
+    // Otherwise, add $ symbol
+    return `$${price}`
   }
 
   return (
@@ -56,8 +71,12 @@ export function WineDetail() {
 
             <div className="flex flex-wrap gap-x-2 mt-2 text-sm text-gray-600">
               {selectedWine.region && <span>{selectedWine.region}</span>}
-              {selectedWine.region && selectedWine.pais && <span>•</span>}
-              {selectedWine.pais && <span>{selectedWine.pais}</span>}
+              {selectedWine.region && selectedWine.pais && !selectedWine.region.includes(selectedWine.pais) && (
+                <span>•</span>
+              )}
+              {selectedWine.pais && !selectedWine.region?.includes(selectedWine.pais) && (
+                <span>{selectedWine.pais}</span>
+              )}
               {(selectedWine.region || selectedWine.pais) && selectedWine.ano && <span>•</span>}
               {selectedWine.ano && <span>{selectedWine.ano}</span>}
             </div>
@@ -67,7 +86,7 @@ export function WineDetail() {
           <div className="grid grid-cols-2 gap-4">
             {selectedWine.uva && (
               <div>
-                <h3 className="font-medium text-sm text-gray-600">Grape</h3>
+                <h3 className="font-medium text-sm text-gray-600">Uva</h3>
                 <p>{selectedWine.uva}</p>
               </div>
             )}
@@ -81,88 +100,59 @@ export function WineDetail() {
 
             {selectedWine.enologo && (
               <div>
-                <h3 className="font-medium text-sm text-gray-600">Winemaker</h3>
+                <h3 className="font-medium text-sm text-gray-600">Enólogo</h3>
                 <p>{selectedWine.enologo}</p>
               </div>
             )}
 
             {selectedWine.tipo && (
               <div>
-                <h3 className="font-medium text-sm text-gray-600">Type</h3>
+                <h3 className="font-medium text-sm text-gray-600">Tipo</h3>
                 <p>{selectedWine.tipo}</p>
               </div>
             )}
 
             {selectedWine.estilo && (
               <div>
-                <h3 className="font-medium text-sm text-gray-600">Style</h3>
+                <h3 className="font-medium text-sm text-gray-600">Estilo</h3>
                 <p>{selectedWine.estilo}</p>
               </div>
             )}
 
             {selectedWine.altitud && (
               <div>
-                <h3 className="font-medium text-sm text-gray-600">Altitude</h3>
+                <h3 className="font-medium text-sm text-gray-600">Altitud</h3>
                 <p>{selectedWine.altitud}</p>
               </div>
             )}
           </div>
 
           {/* Prices */}
-          <div className="border-t border-b border-gray-200 py-4">
-            <h3 className="font-medium mb-2">Prices</h3>
-            <div className="space-y-2">
-              {selectedWine.precio && (
-                <div className="flex justify-between">
-                  <span>Bottle</span>
-                  <span className="font-medium">{selectedWine.precio}</span>
-                </div>
-              )}
-
-              {selectedWine.precioUSD && (
-                <div className="flex justify-between">
-                  <span>Price USD</span>
-                  <span>{selectedWine.precioUSD}</span>
-                </div>
-              )}
-
-              {selectedWine.precioCopaR1 && (
-                <div className="flex justify-between">
-                  <span>Glass R1</span>
-                  <span>{selectedWine.precioCopaR1}</span>
-                </div>
-              )}
-
-              {selectedWine.precioCopaR2 && (
-                <div className="flex justify-between">
-                  <span>Glass R2</span>
-                  <span>{selectedWine.precioCopaR2}</span>
-                </div>
-              )}
-
-              {selectedWine.precioCopaR3 && (
-                <div className="flex justify-between">
-                  <span>Glass R3</span>
-                  <span>{selectedWine.precioCopaR3}</span>
-                </div>
-              )}
-
-              {selectedWine.precioCopa &&
-                !selectedWine.precioCopaR1 &&
-                !selectedWine.precioCopaR2 &&
-                !selectedWine.precioCopaR3 && (
+          {(selectedWine.precio || selectedWine.precioCopa) && (
+            <div className="border-t border-b border-gray-200 py-4">
+              <h3 className="font-medium mb-2">Precios</h3>
+              <div className="space-y-2">
+                {selectedWine.precio && (
                   <div className="flex justify-between">
-                    <span>Glass</span>
-                    <span>{selectedWine.precioCopa}</span>
+                    <span>Botella</span>
+                    <span className="font-medium">{formatPrice(selectedWine.precio)}</span>
                   </div>
                 )}
+
+                {selectedWine.precioCopa && (
+                  <div className="flex justify-between">
+                    <span>Copa</span>
+                    <span>{formatPrice(selectedWine.precioCopa)}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Tasting notes */}
           {(selectedWine.vista || selectedWine.nariz || selectedWine.boca) && (
             <div>
-              <h3 className="font-medium mb-2">Tasting Notes</h3>
+              <h3 className="font-medium mb-2">Notas de Cata</h3>
               <div className="space-y-2">
                 {selectedWine.vista && (
                   <div>
@@ -189,7 +179,7 @@ export function WineDetail() {
           {/* Food pairing */}
           {selectedWine.maridaje && (
             <div>
-              <h3 className="font-medium mb-2">Recommended Pairing</h3>
+              <h3 className="font-medium mb-2">Maridaje Recomendado</h3>
               <p className="text-gray-800">{selectedWine.maridaje}</p>
             </div>
           )}
@@ -197,7 +187,7 @@ export function WineDetail() {
           {/* Other information */}
           {selectedWine.otros && (
             <div>
-              <h3 className="font-medium mb-2">Additional Information</h3>
+              <h3 className="font-medium mb-2">Información Adicional</h3>
               <p className="text-gray-800">{selectedWine.otros}</p>
             </div>
           )}

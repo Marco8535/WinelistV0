@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Bookmark } from "lucide-react"
 import { useWine } from "@/context/wine-context"
@@ -32,30 +31,17 @@ export function WineItem({ wine }: WineItemProps) {
     }, 300)
   }
 
-  // Format the sub-details line
-  const formatSubDetails = () => {
-    const parts = []
+  // Format price display
+  const formatPrice = (price: string | undefined) => {
+    if (!price) return ""
 
-    if (wine.productor) parts.push(wine.productor)
-
-    const location = []
-    if (wine.region) location.push(wine.region)
-    if (wine.pais) location.push(wine.pais)
-    // If we have a combined field like Pais_Region_Origen, use that
-    if (wine.region?.includes(",") && !wine.pais) {
-      const regionParts = wine.region.split(",")
-      if (regionParts.length > 1) {
-        location.push(regionParts.join(", "))
-      }
+    // If price is already formatted with currency symbol, return as is
+    if (price.startsWith("$") || price.startsWith("€")) {
+      return price
     }
 
-    if (location.length > 0) {
-      parts.push(location.join(", "))
-    }
-
-    if (wine.ano) parts.push(wine.ano)
-
-    return parts.join(" • ")
+    // Otherwise, add $ symbol
+    return `$${price}`
   }
 
   return (
@@ -63,11 +49,21 @@ export function WineItem({ wine }: WineItemProps) {
       <div className="flex flex-col space-y-2 cursor-pointer" onClick={() => setSelectedWine(wine)}>
         <div className="flex justify-between items-start">
           <div className="flex-1">
+            {/* Nombre_Vino_Completo en negrita */}
             <h3 className="text-xl font-bold">{wine.nombre}</h3>
-            <p className="text-sm text-gray-600 mt-1">{formatSubDetails()}</p>
+
+            {/* Información secundaria: Bodega y Cosecha */}
+            <div className="text-sm text-gray-600 mt-1">
+              {wine.productor && <span>{wine.productor}</span>}
+              {wine.productor && wine.ano && <span> • </span>}
+              {wine.ano && <span>{wine.ano}</span>}
+            </div>
           </div>
 
           <div className="flex flex-col items-end">
+            {/* Precio_Botella_Restaurante R1 en negrita a la derecha */}
+            {wine.precio && <span className="font-bold text-right mb-1">{formatPrice(wine.precio)}</span>}
+
             <button
               onClick={handleBookmarkClick}
               className={`p-1 e-ink-button ${animateBookmark ? "bookmark-animation" : ""}`}
@@ -78,18 +74,12 @@ export function WineItem({ wine }: WineItemProps) {
           </div>
         </div>
 
-        {/* Pricing information */}
-        <div className="flex justify-end text-sm">
-          <div className="space-x-2">
-            {wine.precio && <span className="font-medium">Botella: {wine.precio}</span>}
-            {wine.precioCopaR1 && <span>Copa R1: {wine.precioCopaR1}</span>}
-            {wine.precioCopaR2 && <span>Copa R2: {wine.precioCopaR2}</span>}
-            {wine.precioCopaR3 && <span>Copa R3: {wine.precioCopaR3}</span>}
-            {wine.precioCopa && !wine.precioCopaR1 && !wine.precioCopaR2 && !wine.precioCopaR3 && (
-              <span>Copa: {wine.precioCopa}</span>
-            )}
+        {/* Precio R1 copa abajo del precio por botella en gris (solo si existe) */}
+        {wine.precioCopa && (
+          <div className="flex justify-end text-sm text-gray-600">
+            <span>Copa: {formatPrice(wine.precioCopa)}</span>
           </div>
-        </div>
+        )}
       </div>
     </li>
   )
