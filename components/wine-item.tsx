@@ -48,8 +48,8 @@ export function WineItem({ wine }: WineItemProps) {
   }
 
   return (
-    <li className="wine-item">
-      <div className="flex flex-col space-y-2 cursor-pointer" onClick={() => setSelectedWine(wine)}>
+    <li className="wine-item py-3">
+      <div className="flex flex-col space-y-1 cursor-pointer" onClick={() => setSelectedWine(wine)}>
         <div className="flex justify-between items-start">
           <div className="flex-1">
             {/* Nombre_Vino_Completo en negrita */}

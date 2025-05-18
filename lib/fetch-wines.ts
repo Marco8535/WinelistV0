@@ -129,7 +129,7 @@ function mapHeaderToWineProperty(header: string): keyof Wine | null {
     "NOMBRE_VINO_COMPLETO": "nombre",
     "BODEGA": "productor",
     "COSECHA": "ano",
-    "ORDEN_VISUALIZACION_RESTAURANTE": "orden",
+    "ORDEN_VISUALIZACION_VINO": "orden",
     "ALCOHOL": "alcohol",
     "ENCARTA_RESTAURANTE1": "enCarta",
     "CATEGORIA_SOMMELIER": "estilo",  // <--- CLAVE: SIN TILDE, para coincidir con CSV

@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Bookmark } from "lucide-react"
 import { useWine } from "@/context/wine-context"
 
 export function CategoryNavigation() {
-  const { selectedCategory, setSelectedCategory, hasBookmarkedWines, wines } = useWine()
+  const { selectedCategory, setSelectedCategory, hasBookmarkedWines, wines, categoryOrder } = useWine()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [categories, setCategories] = useState<{ id: string; label: string; fixed?: boolean }[]>([
     { id: "all", label: "All Wines", fixed: true },
@@ -15,35 +15,76 @@ export function CategoryNavigation() {
   // Añadir categorías dinámicas basadas en los datos
   useEffect(() => {
     if (wines && wines.length > 0) {
-      // Extraer categorías únicas de los vinos
-      const uniqueCategories = new Set<string>()
+      // Extraer categorías únicas de los vinos usando un Map para evitar duplicados
+      const uniqueCategories = new Map<string, string>()
 
       wines.forEach((wine) => {
-        if (wine.estilo && wine.estilo.trim() !== "") {
-          uniqueCategories.add(wine.estilo.trim())
-        }
-        if (wine.tipo && wine.tipo.trim() !== "") {
-          uniqueCategories.add(wine.tipo.trim())
+        // Solo consideramos vinos que están en carta
+        if (wine.enCarta) {
+          // Añadimos el estilo como categoría si existe
+          if (wine.estilo && wine.estilo.trim() !== "") {
+            const key = wine.estilo.trim().toLowerCase()
+            uniqueCategories.set(key, wine.estilo.trim())
+          }
+
+          // Añadimos el tipo como categoría si existe y no es igual al estilo
+          if (wine.tipo && wine.tipo.trim() !== "") {
+            const key = wine.tipo.trim().toLowerCase()
+            // Evitamos duplicados entre estilo y tipo
+            if (!wine.estilo || wine.estilo.trim().toLowerCase() !== key) {
+              uniqueCategories.set(key, wine.tipo.trim())
+            }
+          }
         }
       })
 
-      // Convertir a array y ordenar alfabéticamente
-      const sortedCategories = Array.from(uniqueCategories).sort()
+      // Obtener las categorías como array
+      const categoryArray = Array.from(uniqueCategories.values())
+
+      // Crear objetos de categoría para ordenar
+      const categoriesToSort = categoryArray.map((cat) => ({
+        id: cat.toLowerCase().replace(/\s+/g, "-"),
+        label: cat,
+        fixed: false,
+      }))
+
+      // Ordenar categorías según el orden definido en el contexto
+
+      if (categoryOrder && categoryOrder.length > 0) {
+        // Crear un mapa de orden para búsqueda rápida
+        const orderMap = new Map<string, number>()
+        categoryOrder.forEach((config) => {
+          orderMap.set(config.categoryName.toLowerCase(), config.displayOrder)
+        })
+
+        // Ordenar categorías según el mapa de orden
+        categoriesToSort.sort((a, b) => {
+          const orderA = orderMap.get(a.label.toLowerCase())
+          const orderB = orderMap.get(b.label.toLowerCase())
+
+          if (orderA !== undefined && orderB !== undefined) {
+            return orderA - orderB
+          }
+          if (orderA !== undefined) return -1
+          if (orderB !== undefined) return 1
+          return a.label.localeCompare(b.label)
+        })
+      } else {
+        // Si no hay configuración de orden, ordenar alfabéticamente
+        categoriesToSort.sort((a, b) => a.label.localeCompare(b.label))
+      }
 
       // Crear el array final de categorías con las fijas al principio y final
       const newCategories = [
         { id: "all", label: "All Wines", fixed: true },
-        { id: "glass", label: "By the Glass" },
-        ...sortedCategories.map((cat) => ({
-          id: cat.toLowerCase().replace(/\s+/g, "-"),
-          label: cat,
-        })),
+        { id: "glass", label: "By the Glass", fixed: true },
+        ...categoriesToSort,
         { id: "favorites", label: "Guardado", fixed: true },
       ]
 
       setCategories(newCategories)
     }
-  }, [wines])
+  }, [wines, categoryOrder])
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {

@@ -10,6 +10,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import type { Wine, WineCategory as SelectedCategoryType, WineFilter, GroupedWineData } from "@/types/wine"
 import { fetchWines } from "@/lib/fetch-wines"
 import { processAndGroupWines } from "@/lib/process-wines"
+import { fetchCategoryConfig, type CategoryConfig } from "@/lib/fetch-category-config"
 
 // Definición del tipo para el Contexto
 interface WineContextType {
@@ -17,6 +18,7 @@ interface WineContextType {
   loading: boolean
   error: string | null
   categorizedWineData: GroupedWineData // Datos agrupados y ordenados por nuestro "chef"
+  categoryOrder: CategoryConfig[] // Configuración de orden de categorías
 
   // Tus otras propiedades existentes:
   bookmarkedWines: Set<string>
@@ -49,36 +51,44 @@ export function WineProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [filters, setFilters] = useState<WineFilter>({})
   const [selectedWine, setSelectedWine] = useState<Wine | null>(null)
+  const [categoryOrder, setCategoryOrder] = useState<CategoryConfig[]>([])
 
   // useEffect para cargar y procesar los vinos al inicio
   useEffect(() => {
-    async function loadAndProcessAllWines() {
+    async function loadInitialData() {
       try {
         setLoading(true)
         setError(null)
-        const rawWinesFromSheet = await fetchWines()
+        setCategorizedWineData([]) // Limpiar datos previos mientras carga
+        setWines([]) // Limpiar datos previos
 
-        const processedAndCategorizedData = processAndGroupWines(rawWinesFromSheet)
+        // Cargar vinos y configuración de orden de categorías en paralelo
+        const [rawWinesFromSheet, categoryConfigData] = await Promise.all([fetchWines(), fetchCategoryConfig()])
+
+        // Guardar la configuración de orden en el estado (opcional, pero útil para depurar)
+        setCategoryOrder(categoryConfigData)
+        // console.log("[WineContext] Configuración de orden recibida:", categoryConfigData);
+
+        // Pasar AMBOS, los vinos crudos Y la configuración de orden, a processAndGroupWines
+        const processedAndCategorizedData = processAndGroupWines(rawWinesFromSheet, categoryConfigData)
 
         if (processedAndCategorizedData.length === 0) {
           if (rawWinesFromSheet.length === 0 && !error) {
-            // Error si fetchWines no trajo nada
-            setError("No se pudieron cargar los datos de vinos. Verifica la URL del CSV o la conexión.")
+            setError("No se pudieron cargar los datos de vinos desde la fuente.")
           } else {
-            // No hay vinos 'enCarta' o que cumplan criterios tras el procesamiento
-            setError("No hay vinos disponibles en la carta que cumplan los criterios.")
+            setError("No hay vinos disponibles en la carta que cumplan los criterios de procesamiento.")
           }
-          setWines([])
-          setCategorizedWineData([])
+          // setWines([]); // ya se limpió arriba
+          // setCategorizedWineData([]); // ya se limpió arriba
         } else {
           setCategorizedWineData(processedAndCategorizedData)
           const flatProcessedWines = processedAndCategorizedData.flatMap((category) => category.wines)
-          setWines(flatProcessedWines) // Actualiza 'wines' con la lista plana procesada
+          setWines(flatProcessedWines)
           setError(null)
         }
       } catch (err: any) {
-        setError(`Error crítico al cargar o procesar vinos: ${err.message}`)
-        console.error("Error en loadAndProcessAllWines:", err)
+        setError(`Error crítico al cargar datos iniciales: ${err.message}`)
+        console.error("Error en loadInitialData (WineContext):", err)
         setWines([])
         setCategorizedWineData([])
       } finally {
@@ -86,8 +96,8 @@ export function WineProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    loadAndProcessAllWines()
-  }, []) // El array vacío [] asegura que se ejecute solo una vez
+    loadInitialData()
+  }, []) // El [] vacío asegura que se ejecute solo una vez
 
   // Tus otros useEffects para bookmarks (sin cambios)
   useEffect(() => {
@@ -132,8 +142,12 @@ export function WineProvider({ children }: { children: ReactNode }) {
     } else if (selectedCategory === "glass") {
       if (wine.precioCopa === undefined || wine.precioCopa === null) return false
     } else if (selectedCategory !== "all") {
-      // Para categorías dinámicas, compara con el nombre de la categoría
+      // Para categorías dinámicas, necesitamos una lógica más precisa
+      // Convertimos el ID de categoría seleccionada de nuevo a su nombre original
       const categoryName = selectedCategory.replace(/-/g, " ")
+
+      // Verificamos si el vino pertenece a esta categoría específica
+      // Comparamos directamente con estilo o tipo, no con subcadenas
       const matchesCategory =
         (wine.estilo && wine.estilo.toLowerCase() === categoryName.toLowerCase()) ||
         (wine.tipo && wine.tipo.toLowerCase() === categoryName.toLowerCase())
@@ -197,7 +211,8 @@ export function WineProvider({ children }: { children: ReactNode }) {
     wines,
     loading,
     error,
-    categorizedWineData, // <- Aquí se incluye
+    categorizedWineData,
+    categoryOrder, // <- Añadir aquí
 
     bookmarkedWines,
     selectedCategory,
