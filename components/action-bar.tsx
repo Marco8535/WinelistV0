@@ -1,71 +1,58 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
-import { Search, Filter, X } from "lucide-react"
 import { useWine } from "@/context/wine-context"
-import { FilterPanel } from "./filter-panel"
+import { Search, X } from "lucide-react"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 
 export function ActionBar() {
+  const [searchOpen, setSearchOpen] = useState(false)
   const { searchQuery, setSearchQuery } = useWine()
-  const [showSearch, setShowSearch] = useState(false)
-  const [showFilter, setShowFilter] = useState(false)
 
-  const toggleSearch = () => {
-    setShowSearch(!showSearch)
-    if (showFilter) setShowFilter(false)
-    if (!showSearch) setSearchQuery("")
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
   }
 
-  const toggleFilter = () => {
-    setShowFilter(!showFilter)
-    if (showSearch) setShowSearch(false)
+  const clearSearch = () => {
+    setSearchQuery("")
+    setSearchOpen(false)
   }
 
   return (
-    <div className="px-4 py-2">
-      <div className="flex justify-end space-x-2">
-        <button
-          onClick={toggleSearch}
-          className="p-2 rounded-full border border-gray-300 e-ink-button"
-          aria-label="Search wines"
-        >
-          <Search size={20} />
+    <div className="border-b border-gray-200 py-2 px-4">
+      <div className="max-w-screen-xl mx-auto flex justify-end">
+        <button onClick={() => setSearchOpen(true)} className="p-2 rounded-full hover:bg-gray-100" aria-label="Buscar">
+          <Search className="h-5 w-5 text-gray-500" />
         </button>
-        <button
-          onClick={toggleFilter}
-          className="p-2 rounded-full border border-gray-300 e-ink-button"
-          aria-label="Filter wines"
-        >
-          <Filter size={20} />
-        </button>
+
+        <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+          <DialogContent className="sm:max-w-md">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Buscar por nombre, bodega, región o uva..."
+                className="pl-10 pr-10"
+                value={searchQuery}
+                onChange={handleSearch}
+                autoFocus
+              />
+              {searchQuery && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <X className="h-4 w-4 text-gray-400" />
+                </button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {showSearch && (
-        <div className="mt-2 p-2 bg-white border border-gray-200 rounded-md">
-          <div className="flex items-center">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search wines..."
-              className="flex-1 p-2 bg-transparent outline-none"
-              autoFocus
-            />
-            <button
-              onClick={() => {
-                setSearchQuery("")
-                setShowSearch(false)
-              }}
-              className="p-1 e-ink-button"
-              aria-label="Clear search"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showFilter && <FilterPanel onClose={() => setShowFilter(false)} />}
     </div>
   )
 }

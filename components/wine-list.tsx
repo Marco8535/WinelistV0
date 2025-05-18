@@ -1,115 +1,159 @@
-// Archivo: components/wine-list.tsx
-
 "use client"
 
 import { useWine } from "@/context/wine-context"
-import { WineItem } from "./wine-item" // Asumo que este componente está listo para mostrar un vino
-import { WineDetail } from "./wine-detail" // Asumo que este componente está listo
+import { Bookmark } from "lucide-react"
 
 export function WineList() {
-  const {
-    loading,
-    error,
-    categorizedWineData, // Usaremos esto para la vista "all"
-    selectedCategory, // Para decidir qué mostrar y para mensajes
-    searchQuery, // Para mensajes
-    selectedWine,
-    filteredWines, // Usaremos esto para cuando selectedCategory NO es "all"
-  } = useWine()
+  const { filteredWines, categorizedWineData, toggleBookmark, isWineBookmarked, selectedCategory } = useWine()
 
-  if (loading) {
+  // Log para depuración
+  console.log(`[WineList] Total filteredWines: ${filteredWines.length}`)
+  console.log(`[WineList] Selected category: ${selectedCategory}`)
+  console.log(
+    `[WineList] Sample of filteredWines:`,
+    filteredWines.slice(0, 3).map((w) => ({
+      id: w.id,
+      idInterno: w.idInterno,
+      nombre: w.nombre,
+      enCarta: w.enCarta,
+    })),
+  )
+  console.log(`[WineList] Total categories: ${categorizedWineData.length}`)
+  categorizedWineData.forEach((cat) => {
+    console.log(
+      `[WineList] Category ${cat.categoryName}: ${cat.wines.length} wines, ${cat.wines.filter((w) => w.enCarta !== false).length} visible`,
+    )
+  })
+
+  if (filteredWines.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
-        <p className="text-lg">Cargando selección de vinos...</p>
+        <p className="text-gray-500">No se encontraron vinos con los criterios seleccionados.</p>
       </div>
     )
   }
 
-  if (error) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <p className="text-lg text-red-600">{error}</p>
-      </div>
-    )
-  }
-
-  // Si hay un vino seleccionado, mostramos el detalle primero
-  if (selectedWine) {
-    return <WineDetail />
-  }
-
-  // Lógica para determinar si mostrar un mensaje de "no hay vinos"
-  let showNoWinesMessage = false
-  let noWinesMessageText = "No hay vinos disponibles para mostrar según los criterios actuales."
-
+  // Si estamos en "all", mostrar vinos agrupados por categoría
+  // Las categorías ya vienen ordenadas desde el contexto
   if (selectedCategory === "all") {
-    const noCategorizedWines =
-      !categorizedWineData ||
-      categorizedWineData.length === 0 ||
-      categorizedWineData.every((category) => !category.wines || category.wines.length === 0)
-    if (noCategorizedWines) {
-      showNoWinesMessage = true
-      // Mensaje específico si la búsqueda no arrojó resultados en la vista "all"
-      if (searchQuery) {
-        // Nota: searchQuery actualmente no filtra categorizedWineData directamente aquí
-        noWinesMessageText = `No se encontraron vinos que coincidan con "${searchQuery}" en la vista general.`
-      }
-    }
-  } else if (selectedCategory === "favorites") {
-    // filteredWines ya debería estar filtrado por favoritos en el contexto si es necesario,
-    // o esta lógica de mensaje podría necesitar basarse en `bookmarkedWines.size` directamente.
-    // Asumiendo que filteredWines se actualiza correctamente para "favoritos":
-    if (filteredWines.length === 0) {
-      showNoWinesMessage = true
-      noWinesMessageText = "Aún no has marcado ningún vino como favorito."
-    }
-  } else {
-    // Para otras categorías específicas que usan filteredWines
-    if (filteredWines.length === 0) {
-      showNoWinesMessage = true
-      if (searchQuery) {
-        noWinesMessageText = `No se encontraron vinos que coincidan con "${searchQuery}" en la categoría "${selectedCategory}".`
-      } else {
-        noWinesMessageText = `No hay vinos disponibles en la categoría "${selectedCategory}".`
-      }
-    }
-  }
-
-  if (showNoWinesMessage) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <p className="text-lg text-center max-w-md">{noWinesMessageText}</p>
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-screen-xl mx-auto px-4 py-6">
+          {categorizedWineData.map((category) => (
+            <div key={category.categoryName} className="mb-8">
+              <h2 className="font-medium text-lg mb-4">{category.categoryName}</h2>
+              <div className="space-y-6">
+                {category.wines
+                  .filter((wine) => {
+                    // Log para cada vino antes del filtro
+                    console.log(`[WineList - Category View] Rendering wine: ${wine.nombre}, enCarta: ${wine.enCarta}`)
+                    return wine.enCarta !== false
+                  })
+                  .map((wine) => (
+                    <div key={wine.id} className="relative">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium">{wine.nombre}</h3>
+                          <p className="text-sm text-gray-600">
+                            {wine.productor}
+                            {wine.ano && ` • ${wine.ano}`}
+                          </p>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="font-medium mr-2">
+                            ${wine.precio?.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
+                          </span>
+                          <button
+                            onClick={() => toggleBookmark(wine.id)}
+                            className="p-1 rounded-full"
+                            aria-label={isWineBookmarked(wine.id) ? "Quitar de favoritos" : "Añadir a favoritos"}
+                          >
+                            <Bookmark
+                              className="h-4 w-4"
+                              fill={isWineBookmarked(wine.id) ? "#c11119" : "transparent"}
+                              stroke={isWineBookmarked(wine.id) ? "#c11119" : "currentColor"}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                      {wine.precioCopa && (
+                        <div className="text-xs text-gray-500 absolute right-0 mt-1">
+                          Copa ${wine.precioCopa.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
 
-  // Renderizado principal
+  // Para categorías específicas, agrupar por cepa
+  const groupByGrape = (wines: typeof filteredWines) => {
+    return wines.reduce(
+      (acc, wine) => {
+        const grape = wine.uva || "Otros"
+        if (!acc[grape]) {
+          acc[grape] = []
+        }
+        acc[grape].push(wine)
+        return acc
+      },
+      {} as Record<string, typeof filteredWines>,
+    )
+  }
+
+  const groupedByGrape = groupByGrape(filteredWines)
+  const sortedGrapes = Object.keys(groupedByGrape).sort()
+
   return (
-    <div className="flex-1 overflow-y-auto hide-scrollbar p-4">
-      {selectedCategory === "all" ? (
-        // VISTA "ALL WINES": Mostrar vinos agrupados por categorías
-        categorizedWineData.map((category) =>
-          category.wines && category.wines.length > 0 ? (
-            <div key={category.categoryName} className="mb-8">
-              <h2 className="text-xl font-bold mb-3 sticky top-0 bg-[#F8F8F8] py-2 z-10 border-b">
-                {category.categoryName}
-              </h2>
-              <ul className="space-y-2">
-                {category.wines.map((wine) => (
-                  <WineItem key={`${category.categoryName}-${wine.id}`} wine={wine} />
-                ))}
-              </ul>
+    <div className="flex-1 overflow-auto">
+      <div className="max-w-screen-xl mx-auto px-4 py-6">
+        {sortedGrapes.map((grape) => (
+          <div key={grape} className="mb-8">
+            <h2 className="font-medium text-lg mb-4">{grape}</h2>
+            <div className="space-y-6">
+              {groupedByGrape[grape].map((wine) => (
+                <div key={wine.id} className="relative">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-medium">{wine.nombre}</h3>
+                      <p className="text-sm text-gray-600">
+                        {wine.productor}
+                        {wine.ano && ` • ${wine.ano}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="font-medium mr-2">
+                        ${wine.precio?.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
+                      </span>
+                      <button
+                        onClick={() => toggleBookmark(wine.id)}
+                        className="p-1 rounded-full"
+                        aria-label={isWineBookmarked(wine.id) ? "Quitar de favoritos" : "Añadir a favoritos"}
+                      >
+                        <Bookmark
+                          className="h-4 w-4"
+                          fill={isWineBookmarked(wine.id) ? "#c11119" : "transparent"}
+                          stroke={isWineBookmarked(wine.id) ? "#c11119" : "currentColor"}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                  {wine.precioCopa && (
+                    <div className="text-xs text-gray-500 absolute right-0 mt-1">
+                      Copa ${wine.precioCopa.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          ) : null,
-        )
-      ) : (
-        // VISTA PARA OTRAS CATEGORÍAS: Lista plana de vinos filtrados
-        <ul className="space-y-2">
-          {filteredWines.map((wine) => (
-            <WineItem key={wine.id} wine={wine} />
-          ))}
-        </ul>
-      )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

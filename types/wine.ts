@@ -4,12 +4,12 @@ export interface Wine {
   productor: string // Producer
   region?: string // Region
   pais?: string // Country
-  ano?: string // Vintage year
+  ano?: string | number // Vintage year
   uva?: string // Grape variety
   alcohol?: string // Alcohol content
   enologo?: string // Winemaker
-  precio?: string // Bottle price
-  precioCopa?: string // Glass price (general)
+  precio?: number | null // Bottle price
+  precioCopa?: number | null // Glass price (general)
   precioCopaR1?: string // Glass price R1
   precioCopaR2?: string // Glass price R2
   precioCopaR3?: string // Glass price R3
@@ -25,9 +25,8 @@ export interface Wine {
   caracteristica?: string // Wine characteristic
   enCarta?: boolean // If the wine is on the menu
   orden?: number // Display order
+  idInterno?: string // Internal ID
 }
-
-export type WineCategory = string
 
 export interface WineFilter {
   region?: string[]

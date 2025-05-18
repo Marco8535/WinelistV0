@@ -2,6 +2,8 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Lato } from "next/font/google"
 import "./globals.css"
+import { WineProvider } from "@/context/wine-context"
+import { Toaster } from "@/components/ui/toaster"
 
 const lato = Lato({
   subsets: ["latin"],
@@ -21,8 +23,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`${lato.variable} font-sans bg-[#F8F8F8] text-[#1A1A1A]`}>{children}</body>
+    <html lang="es">
+      <body className={`${lato.variable} font-sans bg-[#F8F8F8] text-[#1A1A1A]`}>
+        <WineProvider>
+          {children}
+          <Toaster />
+        </WineProvider>
+      </body>
     </html>
   )
 }

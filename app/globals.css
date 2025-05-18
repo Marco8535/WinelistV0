@@ -2,91 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 248 248 248;
-  --foreground: 26 26 26;
-  --accent: 74 4 4;
-  --accent-foreground: 248 248 248;
-}
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
 
-* {
-  -webkit-tap-highlight-color: transparent;
-}
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
 
-body {
-  font-family: var(--font-lato), sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "rlig" 1, "calt" 1;
-}
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
 
-/* Hide scrollbar but keep functionality */
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
+    --primary: 0 72.2% 50.6%;
+    --primary-foreground: 0 85.7% 97.3%;
 
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
 
-/* Custom styles for e-ink optimization */
-.e-ink-button {
-  transition-property: color, background-color, border-color;
-  transition-duration: 200ms;
-  transition-timing-function: ease-in-out;
-}
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
 
-.e-ink-button:active {
-  background-color: #4a0404;
-  color: white;
-}
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
 
-.wine-item {
-  border-bottom: 1px solid #e5e7eb;
-  padding: 1.2rem 1rem;
-}
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
 
-.wine-item:last-child {
-  border-bottom: none;
-}
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 72.2% 50.6%;
 
-.category-tab {
-  padding: 0.75rem 1rem;
-  white-space: nowrap;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  position: relative;
-}
+    --radius: 0.5rem;
 
-.category-tab.active {
-  font-weight: 700;
-  color: #4a0404;
-}
-
-.category-tab.active::after {
-  content: "";
-  position: absolute;
-  bottom: -1px;
-  left: 10%;
-  width: 80%;
-  height: 2px;
-  background-color: #4a0404;
-}
-
-/* Bookmark animation for e-ink */
-@keyframes bookmark-feedback {
-  0% {
-    transform: scale(1);
+    /* Color del logo Open */
+    --open-red: 193, 17, 25;
   }
-  50% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
+
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 72.2% 50.6%;
+    --primary-foreground: 0 85.7% 97.3%;
+
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 72.2% 50.6%;
   }
 }
 
-.bookmark-animation {
-  animation: bookmark-feedback 300ms ease-in-out;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

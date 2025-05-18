@@ -8,11 +8,29 @@ export function processAndGroupWines(
   wines: Wine[],
   categoryOrderConfig: CategoryConfig[] = [], // Configuración del orden de categorías (opcional)
 ): GroupedWineData {
+  // Log para cada vino antes del filtrado
+  wines.forEach((wine) => {
+    console.log(`[processAndGroupWines] Receiving wine: ${wine.nombre} (ID: ${wine.id}), enCarta: ${wine.enCarta}`)
+  })
+
   // PASO 1: FILTRADO INICIAL - Solo vinos en carta
-  const filteredWines = wines.filter((wine) => wine.enCarta === true)
+  const filteredWines = wines.filter((wine) => wine.enCarta !== false)
   console.log(
     `[processWines] INFO: Después del filtro 'enCarta', quedaron: ${filteredWines.length} vinos de ${wines.length} originales.`,
   )
+
+  // Log para depuración
+  wines.forEach((wine) => {
+    if (wine.enCarta === false) {
+      console.log(`Vino excluido por enCarta=false: ${wine.nombre} (ID: ${wine.id})`)
+    }
+  })
+
+  // Si no hay vinos después del filtrado, devolver un array vacío
+  if (filteredWines.length === 0) {
+    console.warn("[processWines] ADVERTENCIA: No hay vinos que cumplan con el criterio 'enCarta=true'")
+    return []
+  }
 
   // PASO 2: ORDENAMIENTO GLOBAL DE LOS VINOS FILTRADOS
   const sortedWines = [...filteredWines].sort((vinoA, vinoB) => {
@@ -97,6 +115,12 @@ export function processAndGroupWines(
       }
     })
   })
+
+  // Si no hay categorías después de la asignación, devolver un array vacío
+  if (Object.keys(categoriasTemporales).length === 0) {
+    console.warn("[processWines] ADVERTENCIA: No se pudieron asignar categorías a los vinos")
+    return []
+  }
 
   // PASO 4: ORDENAR LAS CATEGORÍAS SEGÚN LA CONFIGURACIÓN
   const configuredOrderMap = new Map<string, number>()
