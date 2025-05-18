@@ -48,13 +48,15 @@ function parseCSV(csvText: string): Wine[] {
 
   const headers = lines[0].split(",").map((header) => header.trim());
 
-  // console.log("----------------------------------------------------");
-  // console.log("[parseCSV] CABECERAS DETECTADAS EN EL CSV Y SU MAPEO (fetch-wines):");
-  // headers.forEach(h => {
-  //   const mappedKey = mapHeaderToWineProperty(h);
-  //   console.log(`  -> Cabecera CSV: "${h}"   --- Mapeada a --->   "${mappedKey || "NO MAPEADA"}"`);
-  // });
-  // console.log("----------------------------------------------------");
+  // ----> ESTE LOG ESTÁ AHORA ACTIVO <----
+  console.log("----------------------------------------------------");
+  console.log("[parseCSV] CABECERAS DETECTADAS EN EL CSV Y SU MAPEO (fetch-wines):");
+  headers.forEach(h => {
+    const mappedKey = mapHeaderToWineProperty(h);
+    console.log(`  -> Cabecera CSV: "${h}"   --- Mapeada a --->   "${mappedKey || "NO MAPEADA"}"`);
+  });
+  console.log("----------------------------------------------------");
+  // ----> FIN DEL LOG DE CABECERAS <----
 
   const wines: Wine[] = [];
   for (let i = 1; i < lines.length; i++) {
@@ -90,13 +92,14 @@ function parseCSV(csvText: string): Wine[] {
             processedValue = null;
           }
         }
+        // Para 'estilo', 'tipo' y otras propiedades de texto, simplemente asignamos rawValue
+        // (que ya tiene trim()). La lógica de "Otros Vinos" va en processAndGroupWines.
         wine[key] = processedValue;
       }
     });
 
     if (wine.nombre && wine.nombre.trim() !== "") {
-      // Loguear los primeros vinos para depuración
-      if (wines.length < 5) { // Loguea solo los primeros 5 que se AÑADEN a la lista de vinos
+      if (wines.length < 5) {
         const getRawVal = (prop: keyof Wine | null): string => {
             if (!prop) return "PROP_NO_MAPEADA";
             const colIdx = headers.findIndex(h => mapHeaderToWineProperty(h) === prop);
@@ -106,7 +109,7 @@ function parseCSV(csvText: string): Wine[] {
             `[parseCSV] Vino Leído: ${wine.nombre} | ` +
             `SKU: '${wine.idInterno}' (crudo:'${getRawVal('idInterno')}') | ` +
             `enCarta: ${wine.enCarta} (crudo:'${getRawVal('enCarta')}') | ` +
-            `Estilo (Cat.Somm): '${wine.estilo}' (crudo:'${getRawVal('estilo')}') | ` +
+            `Estilo (Cat.Somm): '${wine.estilo}' (crudo:'${getRawVal('estilo')}') | ` + // <-- CLAVE AQUÍ
             `Tipo: '${wine.tipo}' (crudo:'${getRawVal('tipo')}') | ` +
             `Precio: ${wine.precio} (crudo:'${getRawVal('precio')}') | ` +
             `PrecioCopa: ${wine.precioCopa} (crudo:'${getRawVal('precioCopa')}') | ` +
@@ -129,16 +132,14 @@ function mapHeaderToWineProperty(header: string): keyof Wine | null {
     "ORDEN_VISUALIZACION_RESTAURANTE": "orden",
     "ALCOHOL": "alcohol",
     "ENCARTA_RESTAURANTE1": "enCarta",
-    // --- CORRECCIÓN CRÍTICA AQUÍ BASADA EN TU CSV ---
-    "CATEGORIA_SOMMELIER": "estilo",  // Tu CSV tiene "Categoria_Sommelier" (SIN TILDE)
-    // -------------------------------------------------
+    "CATEGORIA_SOMMELIER": "estilo",  // <--- CLAVE: SIN TILDE, para coincidir con CSV
     "TIPOVINO": "tipo",
     "PRECIO_BOTELLA_RESTAURANTE R1": "precio",
     "PRECIO R1 COPA": "precioCopa",
     "PAIS_REGION_ORIGEN": "region",
     "CEPA": "uva",
-    "ENÓLOGO": "enologo",             // CSV tiene "Enólogo" (CON TILDE) -> Clave CON TILDE
-    "MARIDAJES": "maridaje",          // CSV tiene "Maridajes" (plural) -> Clave Plural
+    "ENÓLOGO": "enologo",
+    "MARIDAJES": "maridaje",
     "VISTA": "vista",
     "NARIZ": "nariz",
     "BOCA": "boca",
@@ -147,8 +148,6 @@ function mapHeaderToWineProperty(header: string): keyof Wine | null {
   };
 
   const mappedKey = headerMap[normalizedHeader];
-  // if (!mappedKey && normalizedHeader !== "" && !normalizedHeader.startsWith("FIELD")) {
-  //   console.warn(`[mapHeaderToWineProperty] ATENCIÓN: Cabecera CSV "${header}" (norm:"${normalizedHeader}") no tiene mapeo.`);
-  // }
+  // El log individual de cabeceras no mapeadas está ahora activo arriba
   return mappedKey || null;
 }
