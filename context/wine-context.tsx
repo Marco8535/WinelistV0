@@ -3,11 +3,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-// Importaciones de tipos y funciones:
-// Asegúrate de que la ruta a tu archivo de tipos sea correcta.
-// Si tu archivo de tipos se llama 'wine.ts' y está en 'lib/types/', la ruta es correcta.
-// Si se llama 'types.ts' y está en 'lib/', la ruta sería '@/lib/types' o './lib/types'.
-import type { Wine, WineCategory as SelectedCategoryType, WineFilter, GroupedWineData } from "@/types/wine"
+import type { Wine, WineFilter, GroupedWineData } from "@/types/wine"
 import { fetchWines } from "@/lib/fetch-wines"
 import { processAndGroupWines } from "@/lib/process-wines"
 import { fetchCategoryConfig, type CategoryConfig } from "@/lib/fetch-category-config"
@@ -22,13 +18,13 @@ interface WineContextType {
 
   // Tus otras propiedades existentes:
   bookmarkedWines: Set<string>
-  selectedCategory: SelectedCategoryType // Tipo renombrado para evitar conflicto
+  selectedCategory: string // Tipo renombrado para evitar conflicto
   searchQuery: string
   filters: WineFilter
   filteredWines: Wine[] // Vinos después de aplicar filtros de UI
   selectedWine: Wine | null
   toggleBookmark: (id: string) => void
-  setSelectedCategory: (category: SelectedCategoryType) => void
+  setSelectedCategory: (category: string) => void
   setSearchQuery: (query: string) => void
   setFilters: (filters: WineFilter) => void
   setSelectedWine: (wine: Wine | null) => void
@@ -47,7 +43,7 @@ export function WineProvider({ children }: { children: ReactNode }) {
 
   // Otros estados que ya tenías
   const [bookmarkedWines, setBookmarkedWines] = useState<Set<string>>(new Set())
-  const [selectedCategory, setSelectedCategory] = useState<SelectedCategoryType>("all")
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [filters, setFilters] = useState<WineFilter>({})
   const [selectedWine, setSelectedWine] = useState<Wine | null>(null)
@@ -65,9 +61,8 @@ export function WineProvider({ children }: { children: ReactNode }) {
         // Cargar vinos y configuración de orden de categorías en paralelo
         const [rawWinesFromSheet, categoryConfigData] = await Promise.all([fetchWines(), fetchCategoryConfig()])
 
-        // Guardar la configuración de orden en el estado (opcional, pero útil para depurar)
+        // Guardar la configuración de orden en el estado
         setCategoryOrder(categoryConfigData)
-        // console.log("[WineContext] Configuración de orden recibida:", categoryConfigData);
 
         // Pasar AMBOS, los vinos crudos Y la configuración de orden, a processAndGroupWines
         const processedAndCategorizedData = processAndGroupWines(rawWinesFromSheet, categoryConfigData)
@@ -78,12 +73,20 @@ export function WineProvider({ children }: { children: ReactNode }) {
           } else {
             setError("No hay vinos disponibles en la carta que cumplan los criterios de procesamiento.")
           }
-          // setWines([]); // ya se limpió arriba
-          // setCategorizedWineData([]); // ya se limpió arriba
         } else {
           setCategorizedWineData(processedAndCategorizedData)
-          const flatProcessedWines = processedAndCategorizedData.flatMap((category) => category.wines)
-          setWines(flatProcessedWines)
+
+          // Crear una lista plana de vinos únicos
+          const uniqueWines = new Map<string, Wine>()
+          processedAndCategorizedData.forEach((category) => {
+            category.wines.forEach((wine) => {
+              if (!uniqueWines.has(wine.id)) {
+                uniqueWines.set(wine.id, wine)
+              }
+            })
+          })
+
+          setWines(Array.from(uniqueWines.values()))
           setError(null)
         }
       } catch (err: any) {
@@ -131,7 +134,6 @@ export function WineProvider({ children }: { children: ReactNode }) {
   const hasBookmarkedWines = bookmarkedWines.size > 0
 
   // Lógica para 'filteredWines' y 'sortedFilteredWines' (opera sobre el estado 'wines')
-  // Esta es la lógica que ya tenías para los filtros de UI.
   const filteredWinesLogic = wines.filter((wine) => {
     // Solo mostrar vinos que están en la carta
     if (wine.enCarta === false) return false
@@ -142,17 +144,20 @@ export function WineProvider({ children }: { children: ReactNode }) {
     } else if (selectedCategory === "glass") {
       if (wine.precioCopa === undefined || wine.precioCopa === null) return false
     } else if (selectedCategory !== "all") {
-      // Para categorías dinámicas, necesitamos una lógica más precisa
-      // Convertimos el ID de categoría seleccionada de nuevo a su nombre original
+      // Para categorías dinámicas, buscar en el categorizedWineData
       const categoryName = selectedCategory.replace(/-/g, " ")
 
-      // Verificamos si el vino pertenece a esta categoría específica
-      // Comparamos directamente con estilo o tipo, no con subcadenas
-      const matchesCategory =
-        (wine.estilo && wine.estilo.toLowerCase() === categoryName.toLowerCase()) ||
-        (wine.tipo && wine.tipo.toLowerCase() === categoryName.toLowerCase())
+      // Buscar la categoría en categorizedWineData
+      const category = categorizedWineData.find((cat) => cat.categoryName.toLowerCase() === categoryName.toLowerCase())
 
-      if (!matchesCategory) return false
+      // Si la categoría existe, verificar si el vino está en esa categoría
+      if (category) {
+        const wineInCategory = category.wines.some((w) => w.id === wine.id)
+        if (!wineInCategory) return false
+      } else {
+        // Si la categoría no existe, no mostrar ningún vino
+        return false
+      }
     }
 
     // Filtrar por búsqueda
@@ -212,19 +217,19 @@ export function WineProvider({ children }: { children: ReactNode }) {
     loading,
     error,
     categorizedWineData,
-    categoryOrder, // <- Añadir aquí
+    categoryOrder,
 
     bookmarkedWines,
     selectedCategory,
-    setSearchQuery, // Asegúrate de pasar setSearchQuery
-    searchQuery, // y searchQuery
+    setSearchQuery,
+    searchQuery,
     filters,
-    setFilters, // y setFilters
+    setFilters,
     filteredWines: sortedFilteredWines,
     selectedWine,
-    setSelectedWine, // y setSelectedWine
+    setSelectedWine,
     toggleBookmark,
-    setSelectedCategory, // y setSelectedCategory
+    setSelectedCategory,
     isWineBookmarked,
     hasBookmarkedWines,
   }
@@ -232,7 +237,7 @@ export function WineProvider({ children }: { children: ReactNode }) {
   return <WineContext.Provider value={value}>{children}</WineContext.Provider>
 }
 
-// Hook personalizado para usar el contexto (ASEGÚRATE QUE ESTÉ EXACTAMENTE ASÍ Y AL FINAL)
+// Hook personalizado para usar el contexto
 export function useWine() {
   const context = useContext(WineContext)
   if (context === undefined) {

@@ -29,17 +29,20 @@ export function WineDetail() {
     }
   }
 
-  // Format price display
-  const formatPrice = (price: string | undefined) => {
-    if (!price) return ""
+  // Format price display - corregido para manejar números y strings
+  const formatPrice = (price: number | string | undefined | null) => {
+    if (price === undefined || price === null || price === "") return ""
 
-    // If price is already formatted with currency symbol, return as is
-    if (price.startsWith("$") || price.startsWith("€")) {
-      return price
+    // Convertir a string si es un número
+    const priceStr = typeof price === "number" ? price.toString() : price
+
+    // Si el precio ya está formateado con símbolo de moneda, devolverlo tal cual
+    if (priceStr.startsWith("$") || priceStr.startsWith("€")) {
+      return priceStr
     }
 
-    // Otherwise, add $ symbol
-    return `$${price}`
+    // De lo contrario, añadir el símbolo $
+    return `$${priceStr}`
   }
 
   return (
@@ -132,14 +135,14 @@ export function WineDetail() {
             <div className="border-t border-b border-gray-200 py-4">
               <h3 className="font-medium mb-2">Precios</h3>
               <div className="space-y-2">
-                {selectedWine.precio && (
+                {selectedWine.precio !== undefined && selectedWine.precio !== null && (
                   <div className="flex justify-between">
                     <span>Botella</span>
                     <span className="font-medium">{formatPrice(selectedWine.precio)}</span>
                   </div>
                 )}
 
-                {selectedWine.precioCopa && (
+                {selectedWine.precioCopa !== undefined && selectedWine.precioCopa !== null && (
                   <div className="flex justify-between">
                     <span>Copa</span>
                     <span>{formatPrice(selectedWine.precioCopa)}</span>

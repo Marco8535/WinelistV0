@@ -1,150 +1,141 @@
 // Archivo: lib/process-wines.ts
 
-import type { Wine, WineCategory, GroupedWineData } from "./types"; // Ajusta la ruta si es necesario
-// Si creaste lib/fetch-category-config.ts y CategoryConfig está ahí:
-import type { CategoryConfig } from "./fetch-category-config";
-
+import type { Wine, GroupedWineData } from "@/types/wine"
+import type { CategoryConfig } from "./fetch-category-config"
 
 // La función ahora acepta categoryOrderConfig como segundo parámetro
 export function processAndGroupWines(
   wines: Wine[],
-  categoryOrderConfig: CategoryConfig[] // <--- Configuración del orden de categorías
+  categoryOrderConfig: CategoryConfig[] = [], // Configuración del orden de categorías (opcional)
 ): GroupedWineData {
-
-  // PASO 1: FILTRADO INICIAL
-  const filteredWines = wines.filter(wine => wine.enCarta === true);
-  console.log(`[processWines] INFO: Después del filtro 'enCarta', quedaron: ${filteredWines.length} vinos de ${wines.length} originales.`);
+  // PASO 1: FILTRADO INICIAL - Solo vinos en carta
+  const filteredWines = wines.filter((wine) => wine.enCarta === true)
+  console.log(
+    `[processWines] INFO: Después del filtro 'enCarta', quedaron: ${filteredWines.length} vinos de ${wines.length} originales.`,
+  )
 
   // PASO 2: ORDENAMIENTO GLOBAL DE LOS VINOS FILTRADOS
   const sortedWines = [...filteredWines].sort((vinoA, vinoB) => {
-    const ordenA = vinoA.orden;
-    const ordenB = vinoB.orden;
-    if (ordenA !== null && ordenB === null) return -1;
-    if (ordenA === null && ordenB !== null) return 1;
+    const ordenA = vinoA.orden
+    const ordenB = vinoB.orden
+    if (ordenA !== null && ordenB === null) return -1
+    if (ordenA === null && ordenB !== null) return 1
     if (ordenA !== null && ordenB !== null && ordenA !== ordenB) {
-      return ordenA - ordenB;
+      return ordenA - ordenB
     }
 
-    const cosechaA = vinoA.ano;
-    const cosechaB = vinoB.ano;
-    const aEsNV = typeof cosechaA === 'string' && cosechaA.toUpperCase() === 'N/V';
-    const bEsNV = typeof cosechaB === 'string' && cosechaB.toUpperCase() === 'N/V';
-    const aEsNumero = typeof cosechaA === 'number';
-    const bEsNumero = typeof cosechaB === 'number';
+    const cosechaA = vinoA.ano
+    const cosechaB = vinoB.ano
+    const aEsNV = typeof cosechaA === "string" && cosechaA.toUpperCase() === "N/V"
+    const bEsNV = typeof cosechaB === "string" && cosechaB.toUpperCase() === "N/V"
+    const aEsNumero = typeof cosechaA === "number"
+    const bEsNumero = typeof cosechaB === "number"
 
-    if (aEsNumero && bEsNV) return -1;
-    if (aEsNV && bEsNumero) return 1;
+    if (aEsNumero && bEsNV) return -1
+    if (aEsNV && bEsNumero) return 1
     if (aEsNumero && bEsNumero && cosechaA !== cosechaB) {
-      return cosechaA - cosechaB;
+      return cosechaA - cosechaB
     }
-    return (vinoA.nombre || "").localeCompare(vinoB.nombre || "");
-  });
+    return (vinoA.nombre || "").localeCompare(vinoB.nombre || "")
+  })
 
-  // PASO 3: AGRUPACIÓN VISUAL (LÓGICA REVISADA Y ROBUSTA CON LOGS ACTIVOS)
-  const categoriasTemporales: Record<string, Wine[]> = {};
-  const productoYaAnadidoACategoriaTracker = new Set<string>();
+  // PASO 3: ASIGNACIÓN DE CATEGORÍAS MÚLTIPLES
+  // Ahora permitiremos que un vino aparezca en múltiples categorías
+  const categoriasTemporales: Record<string, Wine[]> = {}
 
-  console.log(`[processWines] INFO: Iniciando agrupación para ${sortedWines.length} vinos ordenados.`);
-  // Log inicial para ver los datos que llegan a esta función (solo para vinos clave)
-  sortedWines.forEach(v => {
-    if (v.nombre === "A lisa" || v.nombre === "Alma Roja" || v.nombre?.includes("Chacra")) {
-      console.log(`[processWines] DATOS ENTRANTES para sortedWines - Vino: "${v.nombre}", Estilo: '${v.estilo}', Tipo: '${v.tipo}', SKU: '${v.idInterno}'`);
-    }
-  });
+  // Conjunto para evitar duplicados dentro de la misma categoría
+  const vinoEnCategoriaTracker = new Set<string>() // formato: "vinoId-categoriaNombre"
 
+  // Función para obtener todas las categorías de un vino
+  const obtenerCategoriasDelVino = (vino: Wine): string[] => {
+    const categorias: string[] = []
 
-  sortedWines.forEach(vino => {
-    const nombreLimpio = vino.nombre?.trim().toLowerCase() || "sin_nombre";
-    const productorLimpio = vino.productor?.trim().toLowerCase() || "sin_productor";
-    const identificadorUnicoProducto = (vino.idInterno && vino.idInterno.trim() !== "")
-      ? vino.idInterno.trim()
-      : `${nombreLimpio}-${productorLimpio}`;
-
-    const nombresDeCategoriasParaEsteVino = new Set<string>();
-
-    const estiloLimpio = vino.estilo?.trim();
-    if (estiloLimpio && estiloLimpio !== "") {
-      nombresDeCategoriasParaEsteVino.add(estiloLimpio);
+    // Añadir categoría basada en estilo (Categoria_Sommelier)
+    if (vino.estilo && vino.estilo.trim() !== "") {
+      categorias.push(vino.estilo.trim())
     }
 
-    const tipoLimpio = vino.tipo?.trim();
-    if (tipoLimpio && tipoLimpio !== "") {
-      nombresDeCategoriasParaEsteVino.add(tipoLimpio);
-    }
-
-    if (nombresDeCategoriasParaEsteVino.size === 0) {
-      nombresDeCategoriasParaEsteVino.add('Otros Vinos');
-    }
-
-    // Logs de depuración para vinos específicos ANTES de intentar añadirlos
-    if (vino.nombre === "A lisa" || vino.nombre === "Alma Roja" || vino.nombre === "Fuego Andino" || vino.nombre?.includes("Chacra")) {
-      console.log(
-        `[processWines-PRE-AGRUP] Vino: "${vino.nombre}" (ID Prod: ${identificadorUnicoProducto}, SKU: '${vino.idInterno}')\n` +
-        `  Valores usados para agrupación -> Estilo: '${estiloLimpio}', Tipo: '${tipoLimpio}'\n` + // Muestra los valores que realmente se usan
-        `  Categorías candidatas para este vino: [${Array.from(nombresDeCategoriasParaEsteVino).join(', ')}]`
-      );
-    }
-
-    nombresDeCategoriasParaEsteVino.forEach(nombreCategoriaVisual => {
-      if (!nombreCategoriaVisual || nombreCategoriaVisual.trim() === "") {
-        console.warn(`[processWines] ALERTA: Se intentó usar un nombre de categoría vacío para el vino: ${vino.nombre}`);
-        return;
+    // Añadir categoría basada en tipo (Tipo_Vino) si es diferente del estilo
+    if (vino.tipo && vino.tipo.trim() !== "") {
+      const tipoLimpio = vino.tipo.trim()
+      // Verificar si el tipo ya está incluido como estilo (para evitar duplicados)
+      if (!categorias.some((cat) => cat.toLowerCase() === tipoLimpio.toLowerCase())) {
+        categorias.push(tipoLimpio)
       }
+    }
 
-      const trackingKey = `${identificadorUnicoProducto}%%%${nombreCategoriaVisual}`;
+    // Si no hay categorías, asignar a "Otros Vinos"
+    if (categorias.length === 0) {
+      categorias.push("Otros Vinos")
+    }
 
-      if (!categoriasTemporales[nombreCategoriaVisual]) {
-        categoriasTemporales[nombreCategoriaVisual] = [];
-      }
-
-      if (!productoYaAnadidoACategoriaTracker.has(trackingKey)) {
-        categoriasTemporales[nombreCategoriaVisual].push(vino);
-        productoYaAnadidoACategoriaTracker.add(trackingKey);
-        
-        if (vino.nombre === "A lisa" || vino.nombre === "Alma Roja" || vino.nombre === "Fuego Andino" || vino.nombre?.includes("Chacra")) {
-          console.log(`  >>>> [processWines-AGRUP] AÑADIDO "${vino.nombre}" (ID Prod: ${identificadorUnicoProducto}) a Categoría Visual: "${nombreCategoriaVisual}"`);
-        }
-      } else {
-        if (vino.nombre === "A lisa" || vino.nombre === "Alma Roja" || vino.nombre === "Fuego Andino" || vino.nombre?.includes("Chacra")) {
-          console.log(`  >>>> [processWines-AGRUP] DUPLICADO EVITADO para "${vino.nombre}" (ID Prod: ${identificadorUnicoProducto}) en Categoría Visual: "${nombreCategoriaVisual}" (TrackingKey: ${trackingKey} ya existía)`);
-        }
-      }
-    });
-  });
-
-  // PASO 4: ORDENAR LAS CATEGORÍAS VISUALES Y PREPARAR EL RESULTADO FINAL
-  const configuredOrderMap = new Map<string, number>();
-  if (categoryOrderConfig) { // Verificar si categoryOrderConfig fue pasado
-    categoryOrderConfig.forEach(config => {
-      if (config.categoryName && typeof config.displayOrder === 'number') { // Asegurarse que los datos son válidos
-        configuredOrderMap.set(config.categoryName, config.displayOrder);
-      }
-    });
+    return categorias
   }
-  // console.log("[processWines] INFO: Mapa de orden de categorías configurado:", configuredOrderMap);
 
+  // Asignar cada vino a todas sus categorías
+  sortedWines.forEach((vino) => {
+    const categorias = obtenerCategoriasDelVino(vino)
+
+    // Log para vinos específicos
+    if (vino.nombre === "A lisa" || vino.nombre === "Alma Roja" || vino.nombre?.includes("Chacra")) {
+      console.log(
+        `[processWines] Vino "${vino.nombre}" (ID: ${vino.id}) asignado a categorías: ${categorias.join(", ")}`,
+      )
+    }
+
+    // Asignar el vino a cada una de sus categorías
+    categorias.forEach((categoria) => {
+      const trackingKey = `${vino.id}-${categoria.toLowerCase()}`
+
+      // Evitar duplicados dentro de la misma categoría
+      if (!vinoEnCategoriaTracker.has(trackingKey)) {
+        if (!categoriasTemporales[categoria]) {
+          categoriasTemporales[categoria] = []
+        }
+        categoriasTemporales[categoria].push(vino)
+        vinoEnCategoriaTracker.add(trackingKey)
+      }
+    })
+  })
+
+  // PASO 4: ORDENAR LAS CATEGORÍAS SEGÚN LA CONFIGURACIÓN
+  const configuredOrderMap = new Map<string, number>()
+  if (categoryOrderConfig && categoryOrderConfig.length > 0) {
+    categoryOrderConfig.forEach((config) => {
+      if (config.categoryName && typeof config.displayOrder === "number") {
+        configuredOrderMap.set(config.categoryName, config.displayOrder)
+      }
+    })
+  }
 
   const resultadoFinal: GroupedWineData = Object.keys(categoriasTemporales)
     .sort((categoryA_name, categoryB_name) => {
-      const orderA = configuredOrderMap.get(categoryA_name);
-      const orderB = configuredOrderMap.get(categoryB_name);
+      const orderA = configuredOrderMap.get(categoryA_name)
+      const orderB = configuredOrderMap.get(categoryB_name)
 
       if (orderA !== undefined && orderB !== undefined) {
-        return orderA - orderB;
+        return orderA - orderB
       }
       if (orderA !== undefined && orderB === undefined) {
-        return -1;
+        return -1
       }
       if (orderA === undefined && orderB !== undefined) {
-        return 1;
+        return 1
       }
-      return categoryA_name.localeCompare(categoryB_name);
+      return categoryA_name.localeCompare(categoryB_name)
     })
-    .map(categoryName => ({
+    .map((categoryName) => ({
       categoryName,
-      wines: categoriasTemporales[categoryName]
-    }));
-  
-  console.log("[processWines] INFO: Estructura final de GroupedWineData (después de ordenar categorías):", JSON.stringify(resultadoFinal.map(c => ({ categoria: c.categoryName, vinos: c.wines.length })), null, 2));
-  return resultadoFinal;
+      wines: categoriasTemporales[categoryName],
+    }))
+
+  console.log(
+    "[processWines] INFO: Estructura final de GroupedWineData:",
+    JSON.stringify(
+      resultadoFinal.map((c) => ({ categoria: c.categoryName, vinos: c.wines.length })),
+      null,
+      2,
+    ),
+  )
+  return resultadoFinal
 }
