@@ -25,38 +25,66 @@ interface CepaData {
 }
 
 export function CategoryManagementTab() {
-  const { categorizedWineData, categoryOrder, savedConfig, saveConfiguration, refreshWineList } = useWine()
+  const { categorizedWineData, savedConfig, saveConfiguration, refreshWineList, rawWinesData } = useWine()
   const [categories, setCategories] = useState<CategoryData[]>([])
   const [hasChanges, setHasChanges] = useState(false)
   const { toast } = useToast()
 
   // Inicializar categorías desde los datos reales
   useEffect(() => {
-    if (categorizedWineData.length > 0) {
-      // Extraer categorías únicas
+    if (categorizedWineData.length > 0 || rawWinesData.length > 0) {
+      // Extraer categorías únicas de todos los vinos, no solo los visibles
       const uniqueCategories = new Map<string, Set<string>>()
 
-      categorizedWineData.forEach((category) => {
-        const categoryName = category.categoryName
+      // Primero intentamos usar categorizedWineData
+      if (categorizedWineData.length > 0) {
+        categorizedWineData.forEach((category) => {
+          const categoryName = category.categoryName
 
-        if (!uniqueCategories.has(categoryName)) {
-          uniqueCategories.set(categoryName, new Set())
-        }
+          if (!uniqueCategories.has(categoryName)) {
+            uniqueCategories.set(categoryName, new Set())
+          }
 
-        // Extraer cepas (uva) de los vinos en esta categoría
-        category.wines.forEach((wine) => {
-          if (wine.uva) {
-            uniqueCategories.get(categoryName)?.add(wine.uva)
+          // Extraer cepas (uva) de los vinos en esta categoría
+          category.wines.forEach((wine) => {
+            if (wine.uva) {
+              uniqueCategories.get(categoryName)?.add(wine.uva)
+            }
+          })
+        })
+      }
+      // Si no hay categorizedWineData, usamos rawWinesData
+      else if (rawWinesData.length > 0) {
+        // Agrupar vinos por categoría (estilo)
+        rawWinesData.forEach((wine) => {
+          if (wine.estilo) {
+            if (!uniqueCategories.has(wine.estilo)) {
+              uniqueCategories.set(wine.estilo, new Set())
+            }
+
+            if (wine.uva) {
+              uniqueCategories.get(wine.estilo)?.add(wine.uva)
+            }
+          }
+
+          // También considerar el tipo como categoría si es diferente del estilo
+          if (wine.tipo && wine.tipo !== wine.estilo) {
+            if (!uniqueCategories.has(wine.tipo)) {
+              uniqueCategories.set(wine.tipo, new Set())
+            }
+
+            if (wine.uva) {
+              uniqueCategories.get(wine.tipo)?.add(wine.uva)
+            }
           }
         })
-      })
+      }
 
       // Convertir a formato de categorías para la UI
       const categoryData: CategoryData[] = Array.from(uniqueCategories.entries()).map(
         ([categoryName, cepaSet], index) => {
-          // Buscar el orden de la categoría en categoryOrder si existe
-          const orderConfig = categoryOrder.find((config) => config.categoryName === categoryName)
-          let order = orderConfig ? orderConfig.displayOrder : index + 1
+          // Buscar el orden en la configuración guardada
+          let order = index + 1 // Orden por defecto
 
           // Si hay configuración guardada, usar ese orden
           if (savedConfig) {
@@ -102,7 +130,7 @@ export function CategoryManagementTab() {
 
       setCategories(categoryData)
     }
-  }, [categorizedWineData, categoryOrder, savedConfig])
+  }, [categorizedWineData, savedConfig, rawWinesData])
 
   const handleCategoryOrderChange = (categoryId: string, value: string) => {
     setCategories(

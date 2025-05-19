@@ -4,7 +4,6 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import type { Wine, WineFilter, GroupedWineData } from "@/types/wine"
 import { fetchWines } from "@/lib/fetch-wines"
 import { processAndGroupWines } from "@/lib/process-wines"
-import { fetchCategoryConfig, type CategoryConfig as FetchedCategoryConfig } from "@/lib/fetch-category-config"
 import { storageService, type WineListConfig } from "@/lib/storage-service"
 
 // Definición del tipo para el Contexto
@@ -13,7 +12,6 @@ interface WineContextType {
   loading: boolean
   error: string | null
   categorizedWineData: GroupedWineData // Datos agrupados y ordenados por nuestro "chef"
-  categoryOrder: FetchedCategoryConfig[] // Configuración de orden de categorías
   rawWinesData: Wine[] // Datos crudos de vinos
 
   // Tus otras propiedades existentes:
@@ -53,13 +51,11 @@ export function WineProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [filters, setFilters] = useState<WineFilter>({})
   const [selectedWine, setSelectedWine] = useState<Wine | null>(null)
-  const [categoryOrder, setCategoryOrder] = useState<FetchedCategoryConfig[]>([])
 
   // Nuevos estados para la configuración persistente
   const [savedConfig, setSavedConfig] = useState<WineListConfig | null>(null)
   const [configLastUpdated, setConfigLastUpdated] = useState<number | null>(null)
   const [rawWinesData, setRawWinesData] = useState<Wine[]>([])
-  const [rawCategoryConfig, setRawCategoryConfig] = useState<FetchedCategoryConfig[]>([])
   const [needsRefresh, setNeedsRefresh] = useState<boolean>(false)
 
   // Cargar la configuración guardada al inicio
@@ -96,7 +92,7 @@ export function WineProvider({ children }: { children: ReactNode }) {
 
         // Aplicar inmediatamente la configuración a los vinos
         if (rawWinesData.length > 0) {
-          processWinesWithConfig(rawWinesData, rawCategoryConfig, configWithTimestamp)
+          processWinesWithConfig(rawWinesData, configWithTimestamp)
         }
 
         console.log("Configuración guardada y aplicada correctamente:", configWithTimestamp)
@@ -112,17 +108,13 @@ export function WineProvider({ children }: { children: ReactNode }) {
   // Función para refrescar la lista de vinos con la configuración guardada
   const refreshWineList = () => {
     if (rawWinesData.length > 0) {
-      processWinesWithConfig(rawWinesData, rawCategoryConfig, savedConfig)
+      processWinesWithConfig(rawWinesData, savedConfig)
       setNeedsRefresh(false)
     }
   }
 
   // Procesar vinos con la configuración guardada
-  const processWinesWithConfig = (
-    rawWines: Wine[],
-    categoryConfigData: FetchedCategoryConfig[],
-    config: WineListConfig | null,
-  ) => {
+  const processWinesWithConfig = (rawWines: Wine[], config: WineListConfig | null) => {
     console.log("Procesando vinos con configuración:", config)
 
     // Crear copias para no modificar los originales
@@ -130,7 +122,7 @@ export function WineProvider({ children }: { children: ReactNode }) {
 
     // Si hay configuración guardada, aplicarla
     if (config) {
-      // Aplicar visibilidad de vinos
+      // Aplicar visibilidad y orden de vinos
       processedWines = processedWines.map((wine) => {
         const wineConfig = config.wines.find((w) => w.id === wine.id)
         if (wineConfig) {
@@ -149,11 +141,6 @@ export function WineProvider({ children }: { children: ReactNode }) {
           // Log después de actualizar
           console.log(`Updated wine ID ${updatedWine.id} (${updatedWine.nombre}). New enCarta: ${updatedWine.enCarta}`)
 
-          // Log para depuración
-          if (!wineConfig.visible) {
-            console.log(`Vino marcado como no visible: ${wine.nombre} (ID: ${wine.id})`)
-          }
-
           return updatedWine
         }
 
@@ -168,34 +155,28 @@ export function WineProvider({ children }: { children: ReactNode }) {
       console.log("Processed wines before grouping (sample):", JSON.stringify(processedWines.slice(0, 5), null, 2))
     }
 
-    // Crear un mapa de orden de categorías desde la configuración guardada
-    const categoryOrderMap = new Map<string, number>()
-
-    if (config && config.categories.length > 0) {
-      // Usar la configuración guardada para el orden de categorías
-      config.categories.forEach((cat) => {
-        categoryOrderMap.set(cat.name, cat.order)
-      })
-    } else if (categoryConfigData.length > 0) {
-      // Usar la configuración predeterminada si no hay configuración guardada
-      categoryConfigData.forEach((cat) => {
-        categoryOrderMap.set(cat.categoryName, cat.displayOrder)
-      })
-    }
-
     // IMPORTANTE: Guardar todos los vinos en el estado rawWinesData para que estén disponibles en la administración
     setRawWinesData(rawWines)
 
     // Procesar y agrupar vinos con la configuración aplicada
-    // IMPORTANTE: Solo para la visualización del cliente, filtramos por enCarta=true
-    const processedAndCategorizedData = processAndGroupWines(processedWines, categoryConfigData)
+    // Ahora usamos la configuración de categorías guardada en localStorage
+    const processedAndCategorizedData = processAndGroupWines(processedWines, config?.categories || [])
 
-    // Ordenar las categorías según la configuración
-    const sortedCategorizedData = [...processedAndCategorizedData].sort((a, b) => {
-      const orderA = categoryOrderMap.get(a.categoryName) || Number.MAX_SAFE_INTEGER
-      const orderB = categoryOrderMap.get(b.categoryName) || Number.MAX_SAFE_INTEGER
-      return orderA - orderB
-    })
+    // Ordenar las categorías según la configuración guardada
+    const sortedCategorizedData = [...processedAndCategorizedData]
+
+    // Si hay configuración de categorías, ordenar según ella
+    if (config && config.categories.length > 0) {
+      sortedCategorizedData.sort((a, b) => {
+        const catA = config.categories.find((c) => c.name === a.categoryName)
+        const catB = config.categories.find((c) => c.name === b.categoryName)
+
+        const orderA = catA ? catA.order : Number.MAX_SAFE_INTEGER
+        const orderB = catB ? catB.order : Number.MAX_SAFE_INTEGER
+
+        return orderA - orderB
+      })
+    }
 
     // Actualizar estados
     setCategorizedWineData(sortedCategorizedData)
@@ -231,18 +212,14 @@ export function WineProvider({ children }: { children: ReactNode }) {
         setCategorizedWineData([]) // Limpiar datos previos mientras carga
         setWines([]) // Limpiar datos previos
 
-        // Cargar vinos y configuración de orden de categorías en paralelo
-        const [rawWinesFromSheet, categoryConfigData] = await Promise.all([fetchWines(), fetchCategoryConfig()])
+        // Cargar solo los vinos del CSV (ya no necesitamos la configuración de categorías del CSV)
+        const rawWinesFromSheet = await fetchWines()
 
         // Guardar los datos crudos para futuros procesamientos
         setRawWinesData(rawWinesFromSheet)
-        setRawCategoryConfig(categoryConfigData)
-
-        // Guardar la configuración de orden en el estado
-        setCategoryOrder(categoryConfigData)
 
         // Procesar vinos con la configuración guardada
-        processWinesWithConfig(rawWinesFromSheet, categoryConfigData, savedConfig)
+        processWinesWithConfig(rawWinesFromSheet, savedConfig)
       } catch (err: any) {
         setError(`Error crítico al cargar datos iniciales: ${err.message}`)
         console.error("Error en loadInitialData (WineContext):", err)
@@ -378,7 +355,6 @@ export function WineProvider({ children }: { children: ReactNode }) {
     loading,
     error,
     categorizedWineData,
-    categoryOrder,
     rawWinesData,
 
     bookmarkedWines,

@@ -24,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${lato.variable} font-sans bg-[#F8F8F8] text-[#1A1A1A]`}>
+      <body className={`${lato.variable} font-sans bg-[#F8F8F8] text-[#1A1A1A] prevent-overscroll`}>
         <WineProvider>
           {children}
           <Toaster />

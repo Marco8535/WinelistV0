@@ -37,7 +37,7 @@ export function WineList() {
   // Las categorías ya vienen ordenadas desde el contexto
   if (selectedCategory === "all") {
     return (
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto prevent-overscroll">
         <div className="max-w-screen-xl mx-auto px-4 py-6">
           {categorizedWineData.map((category) => (
             <div key={category.categoryName} className="mb-8">
@@ -110,7 +110,7 @@ export function WineList() {
   const sortedGrapes = Object.keys(groupedByGrape).sort()
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex-1 overflow-auto prevent-overscroll">
       <div className="max-w-screen-xl mx-auto px-4 py-6">
         {sortedGrapes.map((grape) => (
           <div key={grape} className="mb-8">

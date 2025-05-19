@@ -75,5 +75,13 @@
   }
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior-y: contain; /* Prevent pull-to-refresh */
+  }
+}
+
+/* Add a utility class for components that need this behavior */
+@layer utilities {
+  .prevent-overscroll {
+    overscroll-behavior-y: contain;
   }
 }

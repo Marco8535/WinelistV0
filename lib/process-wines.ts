@@ -1,12 +1,12 @@
 // Archivo: lib/process-wines.ts
 
 import type { Wine, GroupedWineData } from "@/types/wine"
-import type { CategoryConfig } from "./fetch-category-config"
+import type { CategoryConfig } from "@/lib/storage-service"
 
-// La función ahora acepta categoryOrderConfig como segundo parámetro
+// La función ahora acepta la configuración de categorías desde localStorage
 export function processAndGroupWines(
   wines: Wine[],
-  categoryOrderConfig: CategoryConfig[] = [], // Configuración del orden de categorías (opcional)
+  categoryConfig: CategoryConfig[] = [], // Configuración de categorías desde localStorage
 ): GroupedWineData {
   // Log para cada vino antes del filtrado
   wines.forEach((wine) => {
@@ -124,10 +124,12 @@ export function processAndGroupWines(
 
   // PASO 4: ORDENAR LAS CATEGORÍAS SEGÚN LA CONFIGURACIÓN
   const configuredOrderMap = new Map<string, number>()
-  if (categoryOrderConfig && categoryOrderConfig.length > 0) {
-    categoryOrderConfig.forEach((config) => {
-      if (config.categoryName && typeof config.displayOrder === "number") {
-        configuredOrderMap.set(config.categoryName, config.displayOrder)
+
+  // Usar la configuración de categorías desde localStorage
+  if (categoryConfig && categoryConfig.length > 0) {
+    categoryConfig.forEach((config) => {
+      if (config.name) {
+        configuredOrderMap.set(config.name, config.order)
       }
     })
   }
