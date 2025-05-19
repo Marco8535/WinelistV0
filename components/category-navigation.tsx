@@ -42,7 +42,7 @@ export function CategoryNavigation() {
         className="absolute left-0 z-10 top-1/2 transform -translate-y-1/2 flex items-center justify-center px-2"
         aria-label="Scroll left"
       >
-        <div className="w-8 h-8 flex items-center justify-center bg-[#F8F8F8] rounded-full border border-gray-200">
+        <div className="w-8 h-8 flex items-center justify-center bg-transparent rounded-full border border-gray-200">
           <ChevronLeft className="h-5 w-5 text-black" />
         </div>
       </button>
@@ -112,7 +112,7 @@ export function CategoryNavigation() {
         className="absolute right-0 z-10 top-1/2 transform -translate-y-1/2 flex items-center justify-center px-2"
         aria-label="Scroll right"
       >
-        <div className="w-8 h-8 flex items-center justify-center bg-[#F8F8F8] rounded-full border border-gray-200">
+        <div className="w-8 h-8 flex items-center justify-center bg-transparent rounded-full border border-gray-200">
           <ChevronRight className="h-5 w-5 text-black" />
         </div>
       </button>
