@@ -105,7 +105,7 @@ export function WineList() {
       <div className="max-w-screen-xl mx-auto px-4 py-6">
         {sortedGrapes.map((grape) => (
           <div key={grape} className="mb-8">
-            <h2 className="font-medium text-lg mb-4">{grape}</h2>
+            <h2 className="font-medium text-xl mb-4 text-center">{grape}</h2>
             <div className="space-y-6">
               {groupedByGrape[grape].map((wine) => (
                 <div key={wine.id} className="relative" onClick={() => setSelectedWine(wine)}>
