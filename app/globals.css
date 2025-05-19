@@ -85,3 +85,46 @@
     overscroll-behavior-y: contain;
   }
 }
+
+/* Estilos para pantalla completa */
+@layer utilities {
+  .fullscreen-app {
+    height: 100vh;
+    height: -webkit-fill-available;
+    width: 100vw;
+    position: fixed;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+}
+
+/* Ocultar la barra de dirección en Safari */
+@media screen and (display-mode: standalone) {
+  html {
+    height: 100vh;
+  }
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow: hidden;
+  }
+}
+
+/* Prevenir el rebote en iOS */
+html,
+body {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Permitir scroll dentro de contenedores específicos */
+.prevent-overscroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}

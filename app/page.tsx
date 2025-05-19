@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useWine } from "@/context/wine-context"
 import { Header } from "@/components/header"
 import { CategoryNavigation } from "@/components/category-navigation"
@@ -8,6 +8,7 @@ import { ActionBar } from "@/components/action-bar"
 import { WineList } from "@/components/wine-list"
 import { WineManagementInterface } from "@/components/admin/wine-management-interface"
 import { Loader2 } from "lucide-react"
+import Script from "next/script"
 
 export default function Home() {
   const { loading, error } = useWine()
@@ -16,6 +17,24 @@ export default function Home() {
   const toggleAdminMode = () => {
     setIsAdminMode(!isAdminMode)
   }
+
+  // Efecto para manejar la pantalla completa en iOS
+  useEffect(() => {
+    // Función para manejar el cambio de orientación
+    const handleOrientationChange = () => {
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.log(`Error attempting to enable full-screen mode: ${err.message}`)
+        })
+      }
+    }
+
+    window.addEventListener("orientationchange", handleOrientationChange)
+
+    return () => {
+      window.removeEventListener("orientationchange", handleOrientationChange)
+    }
+  }, [])
 
   if (loading) {
     return (
@@ -45,11 +64,14 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col prevent-overscroll">
-      <Header onAdminClick={toggleAdminMode} />
-      <CategoryNavigation />
-      <ActionBar />
-      <WineList />
-    </div>
+    <>
+      <Script src="/register-sw.js" strategy="afterInteractive" />
+      <div className="min-h-screen flex flex-col prevent-overscroll">
+        <Header onAdminClick={toggleAdminMode} />
+        <CategoryNavigation />
+        <ActionBar />
+        <WineList />
+      </div>
+    </>
   )
 }
