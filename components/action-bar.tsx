@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useWine } from "@/context/wine-context"
-import { Search, X, Filter } from "lucide-react"
+import { Search, X, Filter, Bookmark } from "lucide-react"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,16 @@ import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 export function ActionBar() {
-  const { searchQuery, setSearchQuery, wines, setFilters, filters, setSelectedWine } = useWine()
+  const {
+    searchQuery,
+    setSearchQuery,
+    wines,
+    setFilters,
+    filters,
+    setSelectedWine,
+    hasBookmarkedWines,
+    setSelectedCategory,
+  } = useWine()
   const [searchOpen, setSearchOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [searchResults, setSearchResults] = useState<any[]>([])
@@ -134,6 +143,18 @@ export function ActionBar() {
 
         <button onClick={() => setFilterOpen(true)} className="p-2 rounded-full hover:bg-gray-100" aria-label="Filtrar">
           <Filter className="h-5 w-5 text-gray-500" />
+        </button>
+
+        <button
+          onClick={() => setSelectedCategory("favorites")}
+          className="p-2 rounded-full hover:bg-gray-100"
+          aria-label="Ver favoritos"
+        >
+          <Bookmark
+            className="h-5 w-5 text-gray-500"
+            fill={hasBookmarkedWines ? "#c11119" : "transparent"}
+            stroke={hasBookmarkedWines ? "#c11119" : "currentColor"}
+          />
         </button>
 
         {/* Diálogo de búsqueda */}
