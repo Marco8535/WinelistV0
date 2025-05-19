@@ -1,13 +1,22 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Bookmark } from "lucide-react"
 import { useWine } from "@/context/wine-context"
 import { cn } from "@/lib/utils"
 
 export function CategoryNavigation() {
-  const { categorizedWineData, selectedCategory, setSelectedCategory, hasBookmarkedWines } = useWine()
+  const { categorizedWineData, selectedCategory, setSelectedCategory, hasBookmarkedWines, bookmarkedWines } = useWine()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [hasBookmarks, setHasBookmarks] = useState(false)
+
+  // Actualizar el estado local cuando cambia bookmarkedWines
+  useEffect(() => {
+    // Verificar explícitamente si hay vinos guardados
+    const hasAnyBookmarks = bookmarkedWines && bookmarkedWines.size > 0
+    console.log("Navigation - Bookmarked wines count:", bookmarkedWines ? bookmarkedWines.size : 0)
+    setHasBookmarks(hasAnyBookmarks)
+  }, [bookmarkedWines])
 
   // Create a safe ID for use in the DOM
   const createSafeId = (name: string) => {
@@ -90,8 +99,8 @@ export function CategoryNavigation() {
         >
           <Bookmark
             className="h-4 w-4 mr-1"
-            fill={hasBookmarkedWines ? "#c11119" : "transparent"}
-            stroke={hasBookmarkedWines ? "#c11119" : "currentColor"}
+            fill={hasBookmarks ? "#c11119" : "none"}
+            stroke={hasBookmarks ? "#c11119" : "currentColor"}
           />
           Guardado
         </button>

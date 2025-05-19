@@ -19,6 +19,7 @@ export function ActionBar() {
     filters,
     setSelectedWine,
     hasBookmarkedWines,
+    bookmarkedWines,
     setSelectedCategory,
   } = useWine()
   const [searchOpen, setSearchOpen] = useState(false)
@@ -36,6 +37,17 @@ export function ActionBar() {
     style: [] as string[],
     type: [] as string[],
   })
+
+  // Estado local para verificar si hay vinos guardados
+  const [hasBookmarks, setHasBookmarks] = useState(false)
+
+  // Actualizar el estado local cuando cambia bookmarkedWines
+  useEffect(() => {
+    // Verificar explícitamente si hay vinos guardados
+    const hasAnyBookmarks = bookmarkedWines && bookmarkedWines.size > 0
+    console.log("Bookmarked wines count:", bookmarkedWines ? bookmarkedWines.size : 0)
+    setHasBookmarks(hasAnyBookmarks)
+  }, [bookmarkedWines])
 
   // Improved function to format prices correctly
   const formatPrice = (price: number | null | undefined) => {
@@ -152,8 +164,8 @@ export function ActionBar() {
         >
           <Bookmark
             className="h-5 w-5 text-gray-500"
-            fill={hasBookmarkedWines ? "#c11119" : "transparent"}
-            stroke={hasBookmarkedWines ? "#c11119" : "currentColor"}
+            fill={hasBookmarks ? "#c11119" : "none"}
+            stroke={hasBookmarks ? "#c11119" : "currentColor"}
           />
         </button>
 
