@@ -84,6 +84,16 @@
   .prevent-overscroll {
     overscroll-behavior-y: contain;
   }
+
+  /* Ocultar la barra de desplazamiento */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 /* Estilos para pantalla completa */
