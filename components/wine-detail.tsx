@@ -15,6 +15,19 @@ import { Bookmark, BookmarkCheck } from "lucide-react"
 export function WineDetail() {
   const { selectedWine, setSelectedWine, toggleBookmark, isWineBookmarked } = useWine()
 
+  // Improved function to format prices correctly
+  const formatPrice = (price: number | null | undefined) => {
+    if (price === null || price === undefined) return "-"
+
+    // Ensure we're working with a number
+    const numericPrice = typeof price === "string" ? Number.parseFloat(price) : price
+
+    // Format with thousands separator and NO decimal places
+    return `$${Math.floor(numericPrice)
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`
+  }
+
   if (!selectedWine) return null
 
   return (
@@ -50,16 +63,8 @@ export function WineDetail() {
               )}
             </div>
             <div className="text-right">
-              {selectedWine.precio && (
-                <div className="font-bold text-lg">
-                  ${selectedWine.precio.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
-                </div>
-              )}
-              {selectedWine.precioCopa && (
-                <div className="text-sm">
-                  Copa: ${selectedWine.precioCopa.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
-                </div>
-              )}
+              {selectedWine.precio && <div className="font-bold text-lg">{formatPrice(selectedWine.precio)}</div>}
+              {selectedWine.precioCopa && <div className="text-sm">Copa: {formatPrice(selectedWine.precioCopa)}</div>}
             </div>
           </div>
 

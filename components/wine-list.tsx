@@ -4,26 +4,21 @@ import { useWine } from "@/context/wine-context"
 import { Bookmark } from "lucide-react"
 
 export function WineList() {
-  const { filteredWines, categorizedWineData, toggleBookmark, isWineBookmarked, selectedCategory } = useWine()
+  const { filteredWines, categorizedWineData, toggleBookmark, isWineBookmarked, selectedCategory, setSelectedWine } =
+    useWine()
 
-  // Log para depuración
-  console.log(`[WineList] Total filteredWines: ${filteredWines.length}`)
-  console.log(`[WineList] Selected category: ${selectedCategory}`)
-  console.log(
-    `[WineList] Sample of filteredWines:`,
-    filteredWines.slice(0, 3).map((w) => ({
-      id: w.id,
-      idInterno: w.idInterno,
-      nombre: w.nombre,
-      enCarta: w.enCarta,
-    })),
-  )
-  console.log(`[WineList] Total categories: ${categorizedWineData.length}`)
-  categorizedWineData.forEach((cat) => {
-    console.log(
-      `[WineList] Category ${cat.categoryName}: ${cat.wines.length} wines, ${cat.wines.filter((w) => w.enCarta !== false).length} visible`,
-    )
-  })
+  // Improved function to format prices correctly
+  const formatPrice = (price: number | null | undefined) => {
+    if (price === null || price === undefined) return "-"
+
+    // Ensure we're working with a number
+    const numericPrice = typeof price === "string" ? Number.parseFloat(price) : price
+
+    // Format with thousands separator and NO decimal places
+    return `$${Math.floor(numericPrice)
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`
+  }
 
   if (filteredWines.length === 0) {
     return (
@@ -34,23 +29,18 @@ export function WineList() {
   }
 
   // Si estamos en "all", mostrar vinos agrupados por categoría
-  // Las categorías ya vienen ordenadas desde el contexto
   if (selectedCategory === "all") {
     return (
       <div className="flex-1 overflow-auto prevent-overscroll">
         <div className="max-w-screen-xl mx-auto px-4 py-6">
           {categorizedWineData.map((category) => (
             <div key={category.categoryName} className="mb-8">
-              <h2 className="font-medium text-lg mb-4">{category.categoryName}</h2>
+              <h2 className="font-medium text-xl mb-4 text-center">{category.categoryName}</h2>
               <div className="space-y-6">
                 {category.wines
-                  .filter((wine) => {
-                    // Log para cada vino antes del filtro
-                    console.log(`[WineList - Category View] Rendering wine: ${wine.nombre}, enCarta: ${wine.enCarta}`)
-                    return wine.enCarta !== false
-                  })
+                  .filter((wine) => wine.enCarta !== false)
                   .map((wine) => (
-                    <div key={wine.id} className="relative">
+                    <div key={wine.id} className="relative" onClick={() => setSelectedWine(wine)}>
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="font-medium">{wine.nombre}</h3>
@@ -60,11 +50,12 @@ export function WineList() {
                           </p>
                         </div>
                         <div className="flex items-center">
-                          <span className="font-medium mr-2">
-                            ${wine.precio?.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
-                          </span>
+                          <span className="font-medium mr-2">{formatPrice(wine.precio)}</span>
                           <button
-                            onClick={() => toggleBookmark(wine.id)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleBookmark(wine.id)
+                            }}
                             className="p-1 rounded-full"
                             aria-label={isWineBookmarked(wine.id) ? "Quitar de favoritos" : "Añadir a favoritos"}
                           >
@@ -78,7 +69,7 @@ export function WineList() {
                       </div>
                       {wine.precioCopa && (
                         <div className="text-xs text-gray-500 absolute right-0 mt-1">
-                          Copa ${wine.precioCopa.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
+                          Copa {formatPrice(wine.precioCopa)}
                         </div>
                       )}
                     </div>
@@ -117,7 +108,7 @@ export function WineList() {
             <h2 className="font-medium text-lg mb-4">{grape}</h2>
             <div className="space-y-6">
               {groupedByGrape[grape].map((wine) => (
-                <div key={wine.id} className="relative">
+                <div key={wine.id} className="relative" onClick={() => setSelectedWine(wine)}>
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-medium">{wine.nombre}</h3>
@@ -127,11 +118,12 @@ export function WineList() {
                       </p>
                     </div>
                     <div className="flex items-center">
-                      <span className="font-medium mr-2">
-                        ${wine.precio?.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
-                      </span>
+                      <span className="font-medium mr-2">{formatPrice(wine.precio)}</span>
                       <button
-                        onClick={() => toggleBookmark(wine.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleBookmark(wine.id)
+                        }}
                         className="p-1 rounded-full"
                         aria-label={isWineBookmarked(wine.id) ? "Quitar de favoritos" : "Añadir a favoritos"}
                       >
@@ -145,7 +137,7 @@ export function WineList() {
                   </div>
                   {wine.precioCopa && (
                     <div className="text-xs text-gray-500 absolute right-0 mt-1">
-                      Copa ${wine.precioCopa.toLocaleString("es-AR", { minimumFractionDigits: 0 })}
+                      Copa {formatPrice(wine.precioCopa)}
                     </div>
                   )}
                 </div>

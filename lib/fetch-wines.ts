@@ -115,9 +115,7 @@ function parseCSV(csvText: string): Wine[] {
           const num = Number.parseInt(rawValue, 10)
           processedValue = isNaN(num) ? null : num
         } else if (key === "precio" || key === "precioCopa") {
-          const cleanedValue = rawValue.replace("$", "").replace(",", ".").trim()
-          const num = Number.parseFloat(cleanedValue)
-          processedValue = isNaN(num) ? null : num
+          processedValue = parsePrice(rawValue)
         } else if (key === "ano") {
           if (rawValue.toUpperCase() === "N/V") {
             processedValue = "N/V"
@@ -193,4 +191,25 @@ function mapHeaderToWineProperty(header: string): keyof Wine | null {
   const mappedKey = headerMap[normalizedHeader]
   // El log individual de cabeceras no mapeadas está ahora activo arriba
   return mappedKey || null
+}
+
+function parsePrice(priceString: string): number | null {
+  if (!priceString || priceString.trim() === "") return null
+
+  try {
+    // Remove currency symbol, thousands separators, and convert to number
+    const cleanedValue = priceString
+      .replace(/^\$/, "") // Remove leading $ symbol
+      .replace(/,/g, "") // Remove thousands separators (commas)
+      .trim()
+
+    // Parse as float to handle decimal points
+    const numericValue = Number.parseFloat(cleanedValue)
+
+    // Return the numeric value or null if invalid
+    return isNaN(numericValue) ? null : numericValue
+  } catch (error) {
+    console.error(`Error parsing price: ${priceString}`, error)
+    return null
+  }
 }
