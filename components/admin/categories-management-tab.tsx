@@ -406,4 +406,4 @@ export function CategoriesManagementTab() {
       </Card>
     </div>
   )
-} 
+}
