@@ -26,6 +26,13 @@ export interface Wine {
   enCarta?: boolean // If the wine is on the menu
   orden?: number // Display order
   idInterno?: string // Internal ID
+  // New fields for premium wineries
+  isPremiumWinery?: boolean // If the winery paid for premium space
+  premiumContent?: {
+    text?: string
+    imageUrl?: string
+    websiteUrl?: string
+  }
 }
 
 export interface WineFilter {
@@ -42,3 +49,21 @@ export interface WineCategory {
 }
 
 export type GroupedWineData = WineCategory[]
+
+// New interface for app configuration
+export interface AppConfig {
+  sommelierEnabled: boolean
+  sommelierPhone?: string
+  whatsappEnabled: boolean
+  emailEnabled: boolean
+  contactEmail?: string
+  // Restaurant information
+  restaurantName?: string
+  restaurantAddress?: string
+  currencySymbol?: string
+  // Interface settings
+  appTitle?: string
+  showPrices?: boolean
+  showAlcohol?: boolean
+  compactView?: boolean
+}

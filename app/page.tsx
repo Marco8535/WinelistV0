@@ -6,12 +6,14 @@ import { Header } from "@/components/header"
 import { CategoryNavigation } from "@/components/category-navigation"
 import { ActionBar } from "@/components/action-bar"
 import { WineList } from "@/components/wine-list"
-import { WineManagementInterface } from "@/components/admin/wine-management-interface"
+import { WineDetail } from "@/components/wine-detail"
+import { BookmarkedWinesManager } from "@/components/bookmarked-wines-manager"
+import { AdminPanel } from "@/components/admin-panel"
 import { Loader2 } from "lucide-react"
 import Script from "next/script"
 
 export default function Home() {
-  const { loading, error } = useWine()
+  const { loading, error, selectedCategory } = useWine()
   const [isAdminMode, setIsAdminMode] = useState(false)
 
   const toggleAdminMode = () => {
@@ -60,7 +62,7 @@ export default function Home() {
   }
 
   if (isAdminMode) {
-    return <WineManagementInterface onBack={toggleAdminMode} />
+    return <AdminPanel onBack={toggleAdminMode} />
   }
 
   return (
@@ -70,7 +72,16 @@ export default function Home() {
         <Header onAdminClick={toggleAdminMode} />
         <CategoryNavigation />
         <ActionBar />
-        <WineList />
+        {selectedCategory === "favorites" ? (
+          <div className="flex-1 overflow-auto prevent-overscroll">
+            <div className="max-w-screen-xl mx-auto px-4 py-6">
+              <BookmarkedWinesManager />
+            </div>
+          </div>
+        ) : (
+          <WineList />
+        )}
+        <WineDetail />
       </div>
     </>
   )
