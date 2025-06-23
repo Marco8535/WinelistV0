@@ -74,7 +74,6 @@ export async function POST(request: NextRequest) {
         user_id: authData.user.id,
         name: restaurantName,
         subdomain: subdomain,
-        admin_email: adminEmail,
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
