@@ -33,6 +33,7 @@ export async function GET(request: Request) {
   // 1. Autorización
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    console.error('[CRON_SYNC] Unauthorized access attempt');
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -55,11 +56,13 @@ export async function GET(request: Request) {
     // 3. Iterar y sincronizar cada uno
     for (const restaurant of restaurants) {
       console.log(`[CRON_SYNC] Processing restaurant: ${restaurant.name} (ID: ${restaurant.id})`);
+      
       if (!restaurant.google_sheet_id) {
         console.warn(`[CRON_SYNC] Skipping ${restaurant.name}, no google_sheet_id configured.`);
         continue;
       }
       
+      console.log(`[CRON_SYNC] Attempting to fetch wines from Google Sheet: ${restaurant.google_sheet_id}`);
       const winesFromSheet = await fetchWinesFromSheet(restaurant.google_sheet_id);
       
       if (winesFromSheet.length > 0) {
@@ -82,7 +85,7 @@ export async function GET(request: Request) {
           console.log(`[CRON_SYNC] Successfully upserted ${winesToUpsert.length} wines for ${restaurant.name}.`);
         }
       } else {
-         console.warn(`[CRON_SYNC] No wines found in Google Sheet for ${restaurant.name}.`);
+         console.warn(`[CRON_SYNC] No wines found in Google Sheet for ${restaurant.name}. This could mean: 1) Sheet is empty, 2) Sheet is not published, 3) Sheet ID is invalid.`);
       }
     }
 
