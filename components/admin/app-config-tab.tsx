@@ -10,9 +10,11 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Phone, Mail, MessageCircle, Settings, Save, RefreshCw } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import { useWine } from "@/context/wine-context"
 import type { AppConfig } from "@/types/wine"
 
 export function AppConfigTab() {
+  const { appConfig, saveAppConfiguration } = useWine()
   const [config, setConfig] = useState<AppConfig>({
     sommelierEnabled: true,
     sommelierPhone: "+1234567890",
@@ -31,39 +33,28 @@ export function AppConfigTab() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Load configuration on component mount
+  // Load configuration from context on component mount
   useEffect(() => {
-    loadConfiguration()
-  }, [])
-
-  const loadConfiguration = () => {
-    try {
-      const savedConfig = localStorage.getItem("app-config")
-      if (savedConfig) {
-        const parsedConfig = JSON.parse(savedConfig) as AppConfig
-        setConfig(parsedConfig)
-        console.log("Configuración de app cargada:", parsedConfig)
-      }
-    } catch (error) {
-      console.error("Error al cargar la configuración de la app:", error)
-      toast({
-        title: "Error",
-        description: "No se pudo cargar la configuración",
-        variant: "destructive"
-      })
+    if (appConfig) {
+      setConfig(appConfig)
+      console.log("Configuración de app cargada desde contexto:", appConfig)
     }
-  }
+  }, [appConfig])
 
   const saveConfiguration = async () => {
     setIsSaving(true)
     try {
-      localStorage.setItem("app-config", JSON.stringify(config))
-      setHasUnsavedChanges(false)
-      toast({
-        title: "Configuración guardada",
-        description: "Los cambios se han guardado correctamente",
-      })
-      console.log("Configuración de app guardada:", config)
+      const success = await saveAppConfiguration(config)
+      if (success) {
+        setHasUnsavedChanges(false)
+        toast({
+          title: "Configuración guardada",
+          description: "Los cambios se han guardado correctamente en Supabase",
+        })
+        console.log("Configuración de app guardada:", config)
+      } else {
+        throw new Error("Failed to save configuration")
+      }
     } catch (error) {
       console.error("Error al guardar la configuración de la app:", error)
       toast({
@@ -350,7 +341,12 @@ export function AppConfigTab() {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={loadConfiguration}
+            onClick={() => {
+              if (appConfig) {
+                setConfig(appConfig)
+                setHasUnsavedChanges(false)
+              }
+            }}
             disabled={!hasUnsavedChanges}
           >
             Descartar Cambios

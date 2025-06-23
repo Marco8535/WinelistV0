@@ -11,40 +11,21 @@ import { Bookmark, Mail, MessageCircle, PhoneCall, Trash2, X } from "lucide-reac
 import { toast } from "@/hooks/use-toast"
 
 export function BookmarkedWinesManager() {
-  const { wines, bookmarkedWines, toggleBookmark, isWineBookmarked } = useWine()
+  const { wines, bookmarkedWines, toggleBookmark, isWineBookmarked, appConfig } = useWine()
   const [showExportDialog, setShowExportDialog] = useState(false)
   const [exportType, setExportType] = useState<'whatsapp' | 'email'>('whatsapp')
   const [recipientPhone, setRecipientPhone] = useState('')
   const [recipientEmail, setRecipientEmail] = useState('')
   const [showSommelierCall, setShowSommelierCall] = useState(true)
 
-  // Load app configuration
-  const getAppConfig = () => {
-    try {
-      const savedConfig = localStorage.getItem("app-config")
-      if (savedConfig) {
-        const config = JSON.parse(savedConfig)
-        return {
-          sommelierEnabled: config.sommelierEnabled !== false,
-          sommelierPhone: config.sommelierPhone || "+1234567890",
-          whatsappEnabled: config.whatsappEnabled !== false,
-          emailEnabled: config.emailEnabled !== false,
-          contactEmail: config.contactEmail || "sommelier@restaurant.com"
-        }
-      }
-    } catch (error) {
-      console.error("Error loading app config:", error)
-    }
-    return {
-      sommelierEnabled: true,
-      sommelierPhone: "+1234567890",
-      whatsappEnabled: true,
-      emailEnabled: true,
-      contactEmail: "sommelier@restaurant.com"
-    }
+  // Use app configuration from context (no more localStorage)
+  const finalAppConfig = appConfig || {
+    sommelierEnabled: true,
+    sommelierPhone: "+1234567890",
+    whatsappEnabled: true,
+    emailEnabled: true,
+    contactEmail: "sommelier@restaurant.com"
   }
-
-  const appConfig = getAppConfig()
 
   // Get bookmarked wines with full details
   const bookmarkedWinesList = useMemo(() => {
@@ -121,8 +102,8 @@ export function BookmarkedWinesManager() {
 
   // Handle sommelier call
   const handleSommelierCall = () => {
-    if (appConfig.sommelierPhone) {
-      window.open(`tel:${appConfig.sommelierPhone}`, '_self')
+    if (finalAppConfig.sommelierPhone) {
+      window.open(`tel:${finalAppConfig.sommelierPhone}`, '_self')
     }
   }
 
@@ -152,7 +133,7 @@ export function BookmarkedWinesManager() {
         
         <div className="flex flex-wrap gap-2">
           {/* Sommelier Call Button */}
-          {appConfig.sommelierEnabled && (
+          {finalAppConfig.sommelierEnabled && (
             <Button
               variant="outline"
               size="sm"
@@ -172,7 +153,7 @@ export function BookmarkedWinesManager() {
                 variant="outline"
                 size="sm"
                 onClick={() => {setExportType('whatsapp'); setShowExportDialog(true)}}
-                disabled={!appConfig.whatsappEnabled}
+                disabled={!finalAppConfig.whatsappEnabled}
                 className="flex items-center gap-2"
               >
                 <MessageCircle className="h-4 w-4" />
@@ -187,7 +168,7 @@ export function BookmarkedWinesManager() {
                 variant="outline"
                 size="sm"
                 onClick={() => {setExportType('email'); setShowExportDialog(true)}}
-                disabled={!appConfig.emailEnabled}
+                disabled={!finalAppConfig.emailEnabled}
                 className="flex items-center gap-2"
               >
                 <Mail className="h-4 w-4" />

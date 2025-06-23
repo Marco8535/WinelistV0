@@ -1,26 +1,49 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import type { Wine, WineFilter, GroupedWineData } from "@/types/wine"
-import { fetchWines } from "@/lib/fetch-wines"
+import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import type { Wine, WineFilter, GroupedWineData, AppConfig } from "@/types/wine"
+import { createClient } from "@/lib/supabase/client"
 import { processAndGroupWines } from "@/lib/process-wines"
-import { storageService, type WineListConfig } from "@/lib/storage-service"
 
-// Definición del tipo para el Contexto
+// Category configuration type
+interface CategoryConfig {
+  name: string
+  order: number
+  visible: boolean
+}
+
+// Restaurant data type
+interface RestaurantData {
+  id: string
+  name: string
+  subdomain: string
+  logo_url?: string
+  primary_color: string
+  secondary_color: string
+}
+
+// Context type definition
 interface WineContextType {
-  wines: Wine[] // Lista plana de vinos que están en carta y procesados
+  wines: Wine[]
   loading: boolean
   error: string | null
-  categorizedWineData: GroupedWineData // Datos agrupados y ordenados por nuestro "chef"
-  rawWinesData: Wine[] // Datos crudos de vinos
+  categorizedWineData: GroupedWineData
+  rawWinesData: Wine[]
+  
+  // Restaurant and configuration data
+  restaurant: RestaurantData | null
+  appConfig: AppConfig | null
+  categoriesConfig: CategoryConfig[]
 
-  // Tus otras propiedades existentes:
+  // UI state
   bookmarkedWines: Set<string>
-  selectedCategory: string // Tipo renombrado para evitar conflicto
+  selectedCategory: string
   searchQuery: string
   filters: WineFilter
-  filteredWines: Wine[] // Vinos después de aplicar filtros de UI
+  filteredWines: Wine[]
   selectedWine: Wine | null
+
+  // Actions
   toggleBookmark: (id: string) => void
   setSelectedCategory: (category: string) => void
   setSearchQuery: (query: string) => void
@@ -29,9 +52,15 @@ interface WineContextType {
   isWineBookmarked: (id: string) => boolean
   hasBookmarkedWines: boolean
 
-  // Nuevas propiedades para la configuración persistente
-  savedConfig: WineListConfig | null
-  saveConfiguration: (config: WineListConfig) => boolean
+  // Configuration management
+  saveAppConfiguration: (config: AppConfig) => Promise<boolean>
+  saveCategoriesOrder: (categories: CategoryConfig[]) => Promise<boolean>
+  saveWineOrder: (wineId: string, order: number, visible: boolean) => Promise<boolean>
+  refreshData: () => Promise<void>
+
+  // Legacy compatibility
+  savedConfig: any
+  saveConfiguration: (config: any) => boolean
   refreshWineList: () => void
   configLastUpdated: number | null
 }
@@ -39,208 +68,287 @@ interface WineContextType {
 const WineContext = createContext<WineContextType | undefined>(undefined)
 
 export function WineProvider({ children }: { children: ReactNode }) {
-  // Estados del contexto
+  // Core states
   const [wines, setWines] = useState<Wine[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [categorizedWineData, setCategorizedWineData] = useState<GroupedWineData>([])
+  const [rawWinesData, setRawWinesData] = useState<Wine[]>([])
+  
+  // Restaurant and configuration data
+  const [restaurant, setRestaurant] = useState<RestaurantData | null>(null)
+  const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
+  const [categoriesConfig, setCategoriesConfig] = useState<CategoryConfig[]>([])
 
-  // Otros estados que ya tenías
+  // UI states
   const [bookmarkedWines, setBookmarkedWines] = useState<Set<string>>(new Set())
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [filters, setFilters] = useState<WineFilter>({})
   const [selectedWine, setSelectedWine] = useState<Wine | null>(null)
 
-  // Nuevos estados para la configuración persistente
-  const [savedConfig, setSavedConfig] = useState<WineListConfig | null>(null)
-  const [configLastUpdated, setConfigLastUpdated] = useState<number | null>(null)
-  const [rawWinesData, setRawWinesData] = useState<Wine[]>([])
-  const [needsRefresh, setNeedsRefresh] = useState<boolean>(false)
+  const supabase = createClient()
 
-  // Cargar la configuración guardada al inicio
-  useEffect(() => {
-    const loadedConfig = storageService.loadConfig()
-    if (loadedConfig) {
-      setSavedConfig(loadedConfig)
-      setConfigLastUpdated(loadedConfig.lastUpdated)
+  // Get restaurant ID from subdomain or use default
+  const getRestaurantSubdomain = (): string => {
+    if (typeof window === 'undefined') return 'open'
+    
+    const hostname = window.location.hostname
+    
+    // For development, use 'open' as default
+    if (hostname === 'localhost' || hostname.startsWith('192.168') || hostname.startsWith('127.0.0.1')) {
+      return 'open'
     }
-  }, [])
+    
+    // Extract subdomain from hostname
+    const subdomain = hostname.split('.')[0]
+    return subdomain || 'open'
+  }
 
-  // Función para guardar la configuración
-  const saveConfiguration = (config: WineListConfig): boolean => {
+  // Load initial data from Supabase (Prompt A.1 - Solo Lectura)
+  const loadInitialData = async (): Promise<void> => {
     try {
-      // Log para depuración
-      console.log("Config received in saveConfiguration:", JSON.stringify(config, null, 2))
-
-      // Asegurarse de que la configuración tenga un timestamp actualizado
-      const configWithTimestamp = {
-        ...config,
-        lastUpdated: Date.now(),
-      }
-
-      // Guardar la configuración en localStorage
-      const success = storageService.saveConfig(configWithTimestamp)
-
-      if (success) {
-        // Actualizar el estado local con la nueva configuración
-        setSavedConfig(configWithTimestamp)
-        setConfigLastUpdated(configWithTimestamp.lastUpdated)
-
-        // Marcar que se necesita un refresco de la lista de vinos
-        setNeedsRefresh(true)
-
-        // Aplicar inmediatamente la configuración a los vinos
-        if (rawWinesData.length > 0) {
-          processWinesWithConfig(rawWinesData, configWithTimestamp)
-        }
-
-        console.log("Configuración guardada y aplicada correctamente:", configWithTimestamp)
-        return true
-      }
-      return false
-    } catch (error) {
-      console.error("Error al guardar la configuración:", error)
-      return false
-    }
-  }
-
-  // Función para refrescar la lista de vinos con la configuración guardada
-  const refreshWineList = () => {
-    if (rawWinesData.length > 0) {
-      processWinesWithConfig(rawWinesData, savedConfig)
-      setNeedsRefresh(false)
-    }
-  }
-
-  // Procesar vinos con la configuración guardada
-  const processWinesWithConfig = (rawWines: Wine[], config: WineListConfig | null) => {
-    console.log("Procesando vinos con configuración:", config)
-
-    // Crear copias para no modificar los originales
-    let processedWines = [...rawWines]
-
-    // Si hay configuración guardada, aplicarla
-    if (config) {
-      // Aplicar visibilidad y orden de vinos
-      processedWines = processedWines.map((wine) => {
-        const wineConfig = config.wines.find((w) => w.id === wine.id)
-        if (wineConfig) {
-          // Log antes de actualizar
-          console.log(
-            `MATCH FOUND: Wine ID ${wine.id} (${wine.nombre}) matched with config. Raw enCarta: ${wine.enCarta}. Config.visible: ${wineConfig.visible}`,
-          )
-
-          // Aplicamos explícitamente la visibilidad y el orden
-          const updatedWine = {
-            ...wine,
-            enCarta: wineConfig.visible,
-            orden: wineConfig.order,
-          }
-
-          // Log después de actualizar
-          console.log(`Updated wine ID ${updatedWine.id} (${updatedWine.nombre}). New enCarta: ${updatedWine.enCarta}`)
-
-          return updatedWine
-        }
-
-        // Log si no hay config
-        console.log(
-          `NO MATCH: Wine ID ${wine.id} (${wine.nombre}). No specific config found. enCarta remains: ${wine.enCarta}`,
-        )
-        return wine
-      })
-
-      // Log después del map, antes de llamar a processAndGroupWines
-      console.log("Processed wines before grouping (sample):", JSON.stringify(processedWines.slice(0, 5), null, 2))
-    }
-
-    // IMPORTANTE: Guardar todos los vinos en el estado rawWinesData para que estén disponibles en la administración
-    setRawWinesData(rawWines)
-
-    // Procesar y agrupar vinos con la configuración aplicada
-    // Ahora usamos la configuración de categorías guardada en localStorage
-    const processedAndCategorizedData = processAndGroupWines(processedWines, config?.categories || [])
-
-    // Ordenar las categorías según la configuración guardada
-    const sortedCategorizedData = [...processedAndCategorizedData]
-
-    // Si hay configuración de categorías, ordenar según ella
-    if (config && config.categories.length > 0) {
-      sortedCategorizedData.sort((a, b) => {
-        const catA = config.categories.find((c) => c.name === a.categoryName)
-        const catB = config.categories.find((c) => c.name === b.categoryName)
-
-        const orderA = catA ? catA.order : Number.MAX_SAFE_INTEGER
-        const orderB = catB ? catB.order : Number.MAX_SAFE_INTEGER
-
-        return orderA - orderB
-      })
-    }
-
-    // Actualizar estados
-    setCategorizedWineData(sortedCategorizedData)
-
-    // Crear una lista plana de vinos únicos
-    const uniqueWines = new Map<string, Wine>()
-    sortedCategorizedData.forEach((category) => {
-      category.wines.forEach((wine) => {
-        if (!uniqueWines.has(wine.id)) {
-          uniqueWines.set(wine.id, wine)
-        }
-      })
-    })
-
-    // IMPORTANTE: Para la vista del cliente, filtramos por enCarta=true
-    // Pero guardamos todos los vinos en rawWinesData para la administración
-    setWines(Array.from(uniqueWines.values()))
-
-    // Verificar si hay vinos disponibles después del procesamiento
-    if (sortedCategorizedData.length === 0) {
-      setError("No hay vinos disponibles en la carta que cumplan los criterios de procesamiento.")
-    } else {
+      setLoading(true)
       setError(null)
+
+      const restaurantSubdomain = getRestaurantSubdomain()
+      console.log(`[WineContext] Loading data for restaurant subdomain: ${restaurantSubdomain}`)
+
+      // Step 1: Get restaurant info
+      const { data: restaurantData, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('subdomain', restaurantSubdomain)
+        .single()
+
+      if (restaurantError) {
+        console.error('Restaurant not found:', restaurantError)
+        throw new Error(`Restaurant "${restaurantSubdomain}" not found. Please contact support.`)
+      }
+
+      console.log(`[WineContext] Found restaurant:`, restaurantData)
+      setRestaurant(restaurantData)
+
+      // Step 2: Get wines for this restaurant
+      const { data: winesData, error: winesError } = await supabase
+        .from('wines')
+        .select('*')
+        .eq('restaurant_id', restaurantData.id)
+        .order('orden', { ascending: true })
+
+      if (winesError) {
+        console.error('Error fetching wines:', winesError)
+        throw new Error(`Error loading wines: ${winesError.message}`)
+      }
+
+      console.log(`[WineContext] Found ${winesData?.length || 0} wines`)
+
+             // Convert Supabase data to Wine interface
+       const convertedWines: Wine[] = (winesData || []).map((wine: any) => ({
+        id: wine.id,
+        idInterno: wine.id_interno,
+        nombre: wine.nombre,
+        productor: wine.productor,
+        region: wine.region,
+        pais: wine.pais,
+        ano: wine.ano,
+        uva: wine.uva,
+        alcohol: wine.alcohol,
+        enologo: wine.enologo,
+        precio: wine.precio,
+        precioCopa: wine.precio_copa,
+        precioCopaR1: wine.precio_copa_r1,
+        precioCopaR2: wine.precio_copa_r2,
+        precioCopaR3: wine.precio_copa_r3,
+        precioUSD: wine.precio_usd,
+        vista: wine.vista,
+        nariz: wine.nariz,
+        boca: wine.boca,
+        maridaje: wine.maridaje,
+        otros: wine.otros,
+        altitud: wine.altitud,
+        estilo: wine.estilo,
+        tipo: wine.tipo,
+        caracteristica: wine.caracteristica,
+        enCarta: wine.en_carta,
+        orden: wine.orden,
+        isPremiumWinery: wine.is_premium_winery,
+        premiumContent: wine.premium_content ? JSON.parse(wine.premium_content) : undefined
+      }))
+
+      setRawWinesData(convertedWines)
+
+      // Step 3: Get app settings
+      const { data: appSettingsData, error: appSettingsError } = await supabase
+        .from('app_settings')
+        .select('*')
+        .eq('restaurant_id', restaurantData.id)
+        .single()
+
+      if (!appSettingsError && appSettingsData) {
+        const appConfigData: AppConfig = {
+          sommelierEnabled: appSettingsData.sommelier_enabled,
+          sommelierPhone: appSettingsData.sommelier_phone,
+          whatsappEnabled: appSettingsData.whatsapp_enabled,
+          emailEnabled: appSettingsData.email_enabled,
+          contactEmail: appSettingsData.contact_email,
+          restaurantName: appSettingsData.restaurant_name,
+          restaurantAddress: appSettingsData.restaurant_address,
+          currencySymbol: appSettingsData.currency_symbol,
+          appTitle: appSettingsData.app_title,
+          showPrices: appSettingsData.show_prices,
+          showAlcohol: appSettingsData.show_alcohol,
+          compactView: appSettingsData.compact_view
+        }
+        setAppConfig(appConfigData)
+        console.log(`[WineContext] Loaded app config:`, appConfigData)
+      } else {
+        console.warn('No app settings found for restaurant')
+      }
+
+      // Step 4: Get categories settings
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories_settings')
+        .select('*')
+        .eq('restaurant_id', restaurantData.id)
+        .order('display_order', { ascending: true })
+
+             const categoriesConfigData: CategoryConfig[] = (categoriesData || []).map((cat: any) => ({
+        name: cat.name,
+        order: cat.display_order,
+        visible: cat.visible
+      }))
+      setCategoriesConfig(categoriesConfigData)
+      console.log(`[WineContext] Loaded ${categoriesConfigData.length} category configs`)
+
+      // Step 5: Process wines with categories configuration
+      const processedData = processAndGroupWines(convertedWines, categoriesConfigData)
+      setCategorizedWineData(processedData)
+
+      // Step 6: Set wines for UI (only wines that are en_carta = true)
+      const visibleWines = convertedWines.filter(wine => wine.enCarta !== false)
+      setWines(visibleWines)
+
+      console.log(`[WineContext] Successfully loaded ${visibleWines.length} visible wines in ${processedData.length} categories`)
+
+    } catch (err) {
+      console.error('Error loading initial data:', err)
+      setError(err instanceof Error ? err.message : 'Unknown error occurred')
+    } finally {
+      setLoading(false)
     }
   }
 
-  // useEffect para cargar y procesar los vinos al inicio
-  useEffect(() => {
-    async function loadInitialData() {
-      try {
-        setLoading(true)
-        setError(null)
-        setCategorizedWineData([]) // Limpiar datos previos mientras carga
-        setWines([]) // Limpiar datos previos
-
-        // Cargar solo los vinos del CSV (ya no necesitamos la configuración de categorías del CSV)
-        const rawWinesFromSheet = await fetchWines()
-
-        // Guardar los datos crudos para futuros procesamientos
-        setRawWinesData(rawWinesFromSheet)
-
-        // Procesar vinos con la configuración guardada
-        processWinesWithConfig(rawWinesFromSheet, savedConfig)
-      } catch (err: any) {
-        setError(`Error crítico al cargar datos iniciales: ${err.message}`)
-        console.error("Error en loadInitialData (WineContext):", err)
-        setWines([])
-        setCategorizedWineData([])
-      } finally {
-        setLoading(false)
+  // Save app configuration (Prompt A.2 - Escritura)
+  const saveAppConfiguration = async (config: AppConfig): Promise<boolean> => {
+    try {
+      if (!restaurant) {
+        console.error('No restaurant data available')
+        return false
       }
+
+      const response = await fetch('/api/settings/app', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          restaurant_id: restaurant.id,
+          config
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to save app configuration: ${response.statusText}`)
+      }
+
+      setAppConfig(config)
+      console.log('App configuration saved successfully')
+      return true
+    } catch (error) {
+      console.error('Error saving app configuration:', error)
+      return false
     }
+  }
 
-    loadInitialData()
-  }, [savedConfig]) // Añadimos savedConfig como dependencia para que se ejecute cuando cambie
+  // Save categories order (Prompt A.2 - Escritura)
+  const saveCategoriesOrder = async (categories: CategoryConfig[]): Promise<boolean> => {
+    try {
+      if (!restaurant) {
+        console.error('No restaurant data available')
+        return false
+      }
 
-  // Refrescar la lista cuando cambia la configuración o se solicita un refresco
-  useEffect(() => {
-    if (needsRefresh) {
-      refreshWineList()
+      const response = await fetch('/api/settings/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          restaurant_id: restaurant.id,
+          categories
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to save categories order: ${response.statusText}`)
+      }
+
+      setCategoriesConfig(categories)
+      console.log('Categories order saved successfully')
+      return true
+    } catch (error) {
+      console.error('Error saving categories order:', error)
+      return false
     }
-  }, [needsRefresh])
+  }
 
-  // Tus otros useEffects para bookmarks (sin cambios)
+  // Save wine order and visibility (Prompt A.2 - Escritura)
+  const saveWineOrder = async (wineId: string, order: number, visible: boolean): Promise<boolean> => {
+    try {
+      if (!restaurant) {
+        console.error('No restaurant data available')
+        return false
+      }
+
+      const response = await fetch('/api/settings/wines', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          restaurant_id: restaurant.id,
+          wine_id: wineId,
+          order,
+          visible
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to save wine order: ${response.statusText}`)
+      }
+
+      // Update local state
+      setRawWinesData(prev => prev.map(wine => 
+        wine.id === wineId 
+          ? { ...wine, orden: order, enCarta: visible }
+          : wine
+      ))
+
+      console.log('Wine order saved successfully')
+      return true
+    } catch (error) {
+      console.error('Error saving wine order:', error)
+      return false
+    }
+  }
+
+  // Refresh all data
+  const refreshData = async (): Promise<void> => {
+    await loadInitialData()
+  }
+
+  // Load bookmarks from localStorage (only remaining localStorage usage)
   useEffect(() => {
     const savedBookmarks = localStorage.getItem("bookmarkedWines")
     if (savedBookmarks) {
@@ -248,11 +356,17 @@ export function WineProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Save bookmarks to localStorage (only remaining localStorage usage)
   useEffect(() => {
     localStorage.setItem("bookmarkedWines", JSON.stringify(Array.from(bookmarkedWines)))
   }, [bookmarkedWines])
 
-  // Tus otras funciones (toggleBookmark, etc. - sin cambios)
+  // Initial data load
+  useEffect(() => {
+    loadInitialData()
+  }, [])
+
+  // Bookmark functions
   const toggleBookmark = (id: string) => {
     setBookmarkedWines((prev) => {
       const newBookmarks = new Set(prev)
@@ -265,40 +379,34 @@ export function WineProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  const isWineBookmarked = (id: string) => {
-    return bookmarkedWines.has(id)
-  }
-
+  const isWineBookmarked = (id: string) => bookmarkedWines.has(id)
   const hasBookmarkedWines = bookmarkedWines.size > 0
 
-  // Lógica para 'filteredWines' y 'sortedFilteredWines' (opera sobre el estado 'wines')
+  // Filter wines based on current filters and search
   const filteredWinesLogic = wines.filter((wine) => {
-    // Solo mostrar vinos que están en la carta
+    // Only show wines that are in the menu
     if (wine.enCarta === false) return false
 
-    // Filtrar por categoría
+    // Filter by category  
     if (selectedCategory === "favorites") {
       if (!bookmarkedWines.has(wine.id)) return false
     } else if (selectedCategory === "glass") {
       if (wine.precioCopa === undefined || wine.precioCopa === null) return false
     } else if (selectedCategory !== "all") {
-      // Para categorías dinámicas, buscar en el categorizedWineData
       const categoryName = selectedCategory.replace(/-/g, " ")
-
-      // Buscar la categoría en categorizedWineData
-      const category = categorizedWineData.find((cat) => cat.categoryName.toLowerCase() === categoryName.toLowerCase())
-
-      // Si la categoría existe, verificar si el vino está en esa categoría
+      const category = categorizedWineData.find((cat) => 
+        cat.categoryName.toLowerCase() === categoryName.toLowerCase()
+      )
+      
       if (category) {
         const wineInCategory = category.wines.some((w) => w.id === wine.id)
         if (!wineInCategory) return false
       } else {
-        // Si la categoría no existe, no mostrar ningún vino
         return false
       }
     }
 
-    // Filtrar por búsqueda
+    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       const matchesSearch =
@@ -310,34 +418,43 @@ export function WineProvider({ children }: { children: ReactNode }) {
       if (!matchesSearch) return false
     }
 
-    // Aplicar filtros adicionales
+    // Apply additional filters
     if (filters.region && filters.region.length > 0) {
       const wineRegion = wine.region?.toLowerCase() || ""
-      const matchesRegion = filters.region.some((region) => wineRegion.includes(region.toLowerCase()))
+      const matchesRegion = filters.region.some((region) => 
+        wineRegion.includes(region.toLowerCase())
+      )
       if (!matchesRegion) return false
     }
 
     if (filters.grape && filters.grape.length > 0) {
       const wineGrape = wine.uva?.toLowerCase() || ""
-      const matchesGrape = filters.grape.some((grape) => wineGrape.includes(grape.toLowerCase()))
+      const matchesGrape = filters.grape.some((grape) => 
+        wineGrape.includes(grape.toLowerCase())
+      )
       if (!matchesGrape) return false
     }
 
     if (filters.style && filters.style.length > 0) {
       const wineStyle = wine.estilo?.toLowerCase() || ""
-      const matchesStyle = filters.style.some((style) => wineStyle.includes(style.toLowerCase()))
+      const matchesStyle = filters.style.some((style) => 
+        wineStyle.includes(style.toLowerCase())
+      )
       if (!matchesStyle) return false
     }
 
     if (filters.type && filters.type.length > 0) {
       const wineType = wine.tipo?.toLowerCase() || ""
-      const matchesType = filters.type.some((type) => wineType.includes(type.toLowerCase()))
+      const matchesType = filters.type.some((type) => 
+        wineType.includes(type.toLowerCase())
+      )
       if (!matchesType) return false
     }
 
     return true
   })
 
+  // Sort filtered wines
   const sortedFilteredWines = [...filteredWinesLogic].sort((a, b) => {
     if (typeof a.orden === "number" && typeof b.orden === "number") {
       if (a.orden !== b.orden) return a.orden - b.orden
@@ -349,45 +466,58 @@ export function WineProvider({ children }: { children: ReactNode }) {
     return (a.nombre || "").localeCompare(b.nombre || "")
   })
 
-  // Objeto 'value' que el Provider entrega a sus hijos
-  const value = {
+  const value: WineContextType = {
+    // Core data
     wines,
     loading,
     error,
     categorizedWineData,
     rawWinesData,
+    
+    // Restaurant data
+    restaurant,
+    appConfig,
+    categoriesConfig,
 
+    // UI state
     bookmarkedWines,
     selectedCategory,
-    setSearchQuery,
     searchQuery,
     filters,
-    setFilters,
     filteredWines: sortedFilteredWines,
     selectedWine,
-    setSelectedWine,
+
+    // Actions
     toggleBookmark,
     setSelectedCategory,
+    setSearchQuery,
+    setFilters,
+    setSelectedWine,
     isWineBookmarked,
     hasBookmarkedWines,
 
-    // Nuevas propiedades para la configuración persistente
-    savedConfig,
-    saveConfiguration,
-    refreshWineList,
-    configLastUpdated,
+    // Configuration management
+    saveAppConfiguration,
+    saveCategoriesOrder,
+    saveWineOrder,
+    refreshData,
+
+    // Legacy compatibility
+    savedConfig: null,
+    saveConfiguration: () => false,
+    refreshWineList: () => {
+      refreshData()
+    },
+    configLastUpdated: null
   }
 
   return <WineContext.Provider value={value}>{children}</WineContext.Provider>
 }
 
-// Hook personalizado para usar el contexto
 export function useWine() {
   const context = useContext(WineContext)
   if (context === undefined) {
-    throw new Error(
-      "useWine must be used within a WineProvider. Asegúrate de que el componente que usa useWine esté envuelto por WineProvider.",
-    )
+    throw new Error("useWine must be used within a WineProvider")
   }
   return context
-}
+} 

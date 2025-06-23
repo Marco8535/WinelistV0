@@ -8,7 +8,7 @@ import { WineManagementTab } from "@/components/admin/wine-management-tab"
 import { ConfigStatusIndicator } from "@/components/config-status-indicator"
 import { useWine } from "@/context/wine-context"
 import { diagnoseWineData } from "@/lib/diagnostic"
-import { storageService } from "@/lib/storage-service"
+// import { storageService } from "@/lib/storage-service" // Removed - now using Supabase
 
 interface WineManagementInterfaceProps {
   onBack: () => void
@@ -27,13 +27,18 @@ export function WineManagementInterface({ onBack }: WineManagementInterfaceProps
   const handleResetConfig = () => {
     if (
       confirm(
-        "ATENCIÓN: Se ha actualizado el sistema de identificación de vinos. " +
-          "Se recomienda restablecer la configuración para evitar problemas. " +
-          "¿Estás seguro de que deseas eliminar toda la configuración guardada? Esta acción no se puede deshacer.",
+        "ATENCIÓN: Esta función resetea la configuración local. " +
+          "La configuración en Supabase no se verá afectada. " +
+          "¿Estás seguro de que deseas recargar la página?",
       )
     ) {
-      storageService.clearConfig()
-      window.location.reload() // Recargar la página para aplicar los cambios
+      // Clear any local storage except bookmarks
+      Object.keys(localStorage).forEach(key => {
+        if (key !== 'bookmarkedWines') {
+          localStorage.removeItem(key)
+        }
+      })
+      window.location.reload() // Reload page to refresh from Supabase
     }
   }
 
