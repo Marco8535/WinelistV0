@@ -90,27 +90,21 @@ export function WineProvider({ children }: { children: ReactNode }) {
   const supabase = createClient() // Ahora puede ser SupabaseClient | undefined
 
   // Get restaurant ID from subdomain or use default
-  const getRestaurantSubdomain = (): string => {
-    if (typeof window === "undefined") return "open"
-
+  const getRestaurantIdentifier = (): string => {
+    if (typeof window === "undefined") {
+      // En el servidor, no podemos determinar el subdominio, usaremos un default por ahora.
+      return "open"
+    }
     const hostname = window.location.hostname
+    const parts = hostname.split(".")
 
-    // For development, use 'open' as default
-    if (hostname === "localhost" || hostname.startsWith("192.168") || hostname.startsWith("127.0.0.1")) {
+    // Si estamos en localhost o en una URL de preview de Vercel, usamos 'open' como default.
+    if (parts[0] === "localhost" || hostname.endsWith(".vercel.app")) {
       return "open"
     }
 
-    // Extract subdomain from hostname
-    const parts = hostname.split(".")
-    // Handle cases like 'subdomain.vercel.app' or 'subdomain.com'
-    if (parts.length > 2 && parts[parts.length - 2] !== "vercel") {
-      // Avoid 'www' or 'app' as subdomain
-      return parts[0]
-    } else if (parts.length === 2 && parts[0] !== "www") {
-      // For 'subdomain.com'
-      return parts[0]
-    }
-    return "open" // Default for root domain or unknown patterns
+    // En producción, usamos el subdominio real.
+    return parts[0]
   }
 
   // Load initial data from Supabase (Prompt A.1 - Solo Lectura)
@@ -127,19 +121,19 @@ export function WineProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const restaurantSubdomain = getRestaurantSubdomain()
-      console.log(`[WineContext] Loading data for restaurant subdomain: ${restaurantSubdomain}`)
+      const restaurantIdentifier = getRestaurantIdentifier()
+      console.log(`[WineContext] Loading data for restaurant identifier: ${restaurantIdentifier}`)
 
       // Step 1: Get restaurant info
       const { data: restaurantData, error: restaurantError } = await supabase
         .from("restaurants")
         .select("*")
-        .eq("subdomain", restaurantSubdomain)
+        .eq("subdomain", restaurantIdentifier) // Usa el nuevo identificador aquí
         .single()
 
       if (restaurantError) {
         console.error("Restaurant not found:", restaurantError)
-        throw new Error(`Restaurant "${restaurantSubdomain}" not found. Please contact support.`)
+        throw new Error(`Restaurant "${restaurantIdentifier}" not found. Please contact support.`) // Mensaje de error actualizado
       }
 
       console.log(`[WineContext] Found restaurant:`, restaurantData)
