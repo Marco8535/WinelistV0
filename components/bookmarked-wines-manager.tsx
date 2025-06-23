@@ -160,7 +160,7 @@ export function BookmarkedWinesManager() {
               className="flex items-center gap-2 border-green-300 text-green-700 hover:bg-green-50"
             >
               <PhoneCall className="h-4 w-4" />
-              <span className="hidden sm:inline">Concierge</span>
+              <span className="hidden sm:inline">{""}</span>
               <span className="sm:hidden">Concierge</span>
             </Button>
           )}
