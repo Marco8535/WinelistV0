@@ -1,6 +1,19 @@
 import { createBrowserClient } from "@supabase/ssr"
+import type { SupabaseClient } from "@supabase/supabase-js"
 
-export function createClient() {
-  // Create a supabase client on the browser with project's credentials
-  return createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+let supabase: SupabaseClient | undefined // Usamos undefined para el estado inicial y para indicar si no se pudo crear
+
+export function createClient(): SupabaseClient | undefined {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error(
+      "Supabase URL o Anon Key no están configuradas. No se puede crear el cliente de Supabase en el navegador.",
+    )
+    return undefined // Retorna undefined si las variables no están presentes
+  }
+
+  // Patrón Singleton para evitar crear múltiples clientes
+  if (!supabase) {
+    supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  }
+  return supabase
 }

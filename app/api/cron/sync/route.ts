@@ -263,4 +263,4 @@ export async function GET(request: NextRequest) {
 // Also handle POST requests for manual triggering
 export async function POST(request: NextRequest) {
   return GET(request)
-} 
+}

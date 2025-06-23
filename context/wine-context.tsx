@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import type { Wine, WineFilter, GroupedWineData, AppConfig } from "@/types/wine"
 import { createClient } from "@/lib/supabase/client"
 import { processAndGroupWines } from "@/lib/process-wines"
@@ -29,7 +29,7 @@ interface WineContextType {
   error: string | null
   categorizedWineData: GroupedWineData
   rawWinesData: Wine[]
-  
+
   // Restaurant and configuration data
   restaurant: RestaurantData | null
   appConfig: AppConfig | null
@@ -74,7 +74,7 @@ export function WineProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [categorizedWineData, setCategorizedWineData] = useState<GroupedWineData>([])
   const [rawWinesData, setRawWinesData] = useState<Wine[]>([])
-  
+
   // Restaurant and configuration data
   const [restaurant, setRestaurant] = useState<RestaurantData | null>(null)
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null)
@@ -87,22 +87,30 @@ export function WineProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<WineFilter>({})
   const [selectedWine, setSelectedWine] = useState<Wine | null>(null)
 
-  const supabase = createClient()
+  const supabase = createClient() // Ahora puede ser SupabaseClient | undefined
 
   // Get restaurant ID from subdomain or use default
   const getRestaurantSubdomain = (): string => {
-    if (typeof window === 'undefined') return 'open'
-    
+    if (typeof window === "undefined") return "open"
+
     const hostname = window.location.hostname
-    
+
     // For development, use 'open' as default
-    if (hostname === 'localhost' || hostname.startsWith('192.168') || hostname.startsWith('127.0.0.1')) {
-      return 'open'
+    if (hostname === "localhost" || hostname.startsWith("192.168") || hostname.startsWith("127.0.0.1")) {
+      return "open"
     }
-    
+
     // Extract subdomain from hostname
-    const subdomain = hostname.split('.')[0]
-    return subdomain || 'open'
+    const parts = hostname.split(".")
+    // Handle cases like 'subdomain.vercel.app' or 'subdomain.com'
+    if (parts.length > 2 && parts[parts.length - 2] !== "vercel") {
+      // Avoid 'www' or 'app' as subdomain
+      return parts[0]
+    } else if (parts.length === 2 && parts[0] !== "www") {
+      // For 'subdomain.com'
+      return parts[0]
+    }
+    return "open" // Default for root domain or unknown patterns
   }
 
   // Load initial data from Supabase (Prompt A.1 - Solo Lectura)
@@ -111,18 +119,26 @@ export function WineProvider({ children }: { children: ReactNode }) {
       setLoading(true)
       setError(null)
 
+      if (!supabase) {
+        setError(
+          "Error: Las credenciales de Supabase no están configuradas. Por favor, configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+        )
+        setLoading(false)
+        return
+      }
+
       const restaurantSubdomain = getRestaurantSubdomain()
       console.log(`[WineContext] Loading data for restaurant subdomain: ${restaurantSubdomain}`)
 
       // Step 1: Get restaurant info
       const { data: restaurantData, error: restaurantError } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('subdomain', restaurantSubdomain)
+        .from("restaurants")
+        .select("*")
+        .eq("subdomain", restaurantSubdomain)
         .single()
 
       if (restaurantError) {
-        console.error('Restaurant not found:', restaurantError)
+        console.error("Restaurant not found:", restaurantError)
         throw new Error(`Restaurant "${restaurantSubdomain}" not found. Please contact support.`)
       }
 
@@ -131,20 +147,20 @@ export function WineProvider({ children }: { children: ReactNode }) {
 
       // Step 2: Get wines for this restaurant
       const { data: winesData, error: winesError } = await supabase
-        .from('wines')
-        .select('*')
-        .eq('restaurant_id', restaurantData.id)
-        .order('orden', { ascending: true })
+        .from("wines")
+        .select("*")
+        .eq("restaurant_id", restaurantData.id)
+        .order("orden", { ascending: true })
 
       if (winesError) {
-        console.error('Error fetching wines:', winesError)
+        console.error("Error fetching wines:", winesError)
         throw new Error(`Error loading wines: ${winesError.message}`)
       }
 
       console.log(`[WineContext] Found ${winesData?.length || 0} wines`)
 
-             // Convert Supabase data to Wine interface
-       const convertedWines: Wine[] = (winesData || []).map((wine: any) => ({
+      // Convert Supabase data to Wine interface
+      const convertedWines: Wine[] = (winesData || []).map((wine: any) => ({
         id: wine.id,
         idInterno: wine.id_interno,
         nombre: wine.nombre,
@@ -173,16 +189,16 @@ export function WineProvider({ children }: { children: ReactNode }) {
         enCarta: wine.en_carta,
         orden: wine.orden,
         isPremiumWinery: wine.is_premium_winery,
-        premiumContent: wine.premium_content ? JSON.parse(wine.premium_content) : undefined
+        premiumContent: wine.premium_content ? JSON.parse(wine.premium_content) : undefined,
       }))
 
       setRawWinesData(convertedWines)
 
       // Step 3: Get app settings
       const { data: appSettingsData, error: appSettingsError } = await supabase
-        .from('app_settings')
-        .select('*')
-        .eq('restaurant_id', restaurantData.id)
+        .from("app_settings")
+        .select("*")
+        .eq("restaurant_id", restaurantData.id)
         .single()
 
       if (!appSettingsError && appSettingsData) {
@@ -198,25 +214,25 @@ export function WineProvider({ children }: { children: ReactNode }) {
           appTitle: appSettingsData.app_title,
           showPrices: appSettingsData.show_prices,
           showAlcohol: appSettingsData.show_alcohol,
-          compactView: appSettingsData.compact_view
+          compactView: appSettingsData.compact_view,
         }
         setAppConfig(appConfigData)
         console.log(`[WineContext] Loaded app config:`, appConfigData)
       } else {
-        console.warn('No app settings found for restaurant')
+        console.warn("No app settings found for restaurant")
       }
 
       // Step 4: Get categories settings
       const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories_settings')
-        .select('*')
-        .eq('restaurant_id', restaurantData.id)
-        .order('display_order', { ascending: true })
+        .from("categories_settings")
+        .select("*")
+        .eq("restaurant_id", restaurantData.id)
+        .order("display_order", { ascending: true })
 
-             const categoriesConfigData: CategoryConfig[] = (categoriesData || []).map((cat: any) => ({
+      const categoriesConfigData: CategoryConfig[] = (categoriesData || []).map((cat: any) => ({
         name: cat.name,
         order: cat.display_order,
-        visible: cat.visible
+        visible: cat.visible,
       }))
       setCategoriesConfig(categoriesConfigData)
       console.log(`[WineContext] Loaded ${categoriesConfigData.length} category configs`)
@@ -226,14 +242,15 @@ export function WineProvider({ children }: { children: ReactNode }) {
       setCategorizedWineData(processedData)
 
       // Step 6: Set wines for UI (only wines that are en_carta = true)
-      const visibleWines = convertedWines.filter(wine => wine.enCarta !== false)
+      const visibleWines = convertedWines.filter((wine) => wine.enCarta !== false)
       setWines(visibleWines)
 
-      console.log(`[WineContext] Successfully loaded ${visibleWines.length} visible wines in ${processedData.length} categories`)
-
+      console.log(
+        `[WineContext] Successfully loaded ${visibleWines.length} visible wines in ${processedData.length} categories`,
+      )
     } catch (err) {
-      console.error('Error loading initial data:', err)
-      setError(err instanceof Error ? err.message : 'Unknown error occurred')
+      console.error("Error loading initial data:", err)
+      setError(err instanceof Error ? err.message : "Unknown error occurred")
     } finally {
       setLoading(false)
     }
@@ -243,19 +260,19 @@ export function WineProvider({ children }: { children: ReactNode }) {
   const saveAppConfiguration = async (config: AppConfig): Promise<boolean> => {
     try {
       if (!restaurant) {
-        console.error('No restaurant data available')
+        console.error("No restaurant data available")
         return false
       }
 
-      const response = await fetch('/api/settings/app', {
-        method: 'POST',
+      const response = await fetch("/api/settings/app", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           restaurant_id: restaurant.id,
-          config
-        })
+          config,
+        }),
       })
 
       if (!response.ok) {
@@ -263,10 +280,10 @@ export function WineProvider({ children }: { children: ReactNode }) {
       }
 
       setAppConfig(config)
-      console.log('App configuration saved successfully')
+      console.log("App configuration saved successfully")
       return true
     } catch (error) {
-      console.error('Error saving app configuration:', error)
+      console.error("Error saving app configuration:", error)
       return false
     }
   }
@@ -275,19 +292,19 @@ export function WineProvider({ children }: { children: ReactNode }) {
   const saveCategoriesOrder = async (categories: CategoryConfig[]): Promise<boolean> => {
     try {
       if (!restaurant) {
-        console.error('No restaurant data available')
+        console.error("No restaurant data available")
         return false
       }
 
-      const response = await fetch('/api/settings/categories', {
-        method: 'POST',
+      const response = await fetch("/api/settings/categories", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           restaurant_id: restaurant.id,
-          categories
-        })
+          categories,
+        }),
       })
 
       if (!response.ok) {
@@ -295,10 +312,10 @@ export function WineProvider({ children }: { children: ReactNode }) {
       }
 
       setCategoriesConfig(categories)
-      console.log('Categories order saved successfully')
+      console.log("Categories order saved successfully")
       return true
     } catch (error) {
-      console.error('Error saving categories order:', error)
+      console.error("Error saving categories order:", error)
       return false
     }
   }
@@ -307,21 +324,21 @@ export function WineProvider({ children }: { children: ReactNode }) {
   const saveWineOrder = async (wineId: string, order: number, visible: boolean): Promise<boolean> => {
     try {
       if (!restaurant) {
-        console.error('No restaurant data available')
+        console.error("No restaurant data available")
         return false
       }
 
-      const response = await fetch('/api/settings/wines', {
-        method: 'POST',
+      const response = await fetch("/api/settings/wines", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           restaurant_id: restaurant.id,
           wine_id: wineId,
           order,
-          visible
-        })
+          visible,
+        }),
       })
 
       if (!response.ok) {
@@ -329,16 +346,14 @@ export function WineProvider({ children }: { children: ReactNode }) {
       }
 
       // Update local state
-      setRawWinesData(prev => prev.map(wine => 
-        wine.id === wineId 
-          ? { ...wine, orden: order, enCarta: visible }
-          : wine
-      ))
+      setRawWinesData((prev) =>
+        prev.map((wine) => (wine.id === wineId ? { ...wine, orden: order, enCarta: visible } : wine)),
+      )
 
-      console.log('Wine order saved successfully')
+      console.log("Wine order saved successfully")
       return true
     } catch (error) {
-      console.error('Error saving wine order:', error)
+      console.error("Error saving wine order:", error)
       return false
     }
   }
@@ -387,17 +402,15 @@ export function WineProvider({ children }: { children: ReactNode }) {
     // Only show wines that are in the menu
     if (wine.enCarta === false) return false
 
-    // Filter by category  
+    // Filter by category
     if (selectedCategory === "favorites") {
       if (!bookmarkedWines.has(wine.id)) return false
     } else if (selectedCategory === "glass") {
       if (wine.precioCopa === undefined || wine.precioCopa === null) return false
     } else if (selectedCategory !== "all") {
       const categoryName = selectedCategory.replace(/-/g, " ")
-      const category = categorizedWineData.find((cat) => 
-        cat.categoryName.toLowerCase() === categoryName.toLowerCase()
-      )
-      
+      const category = categorizedWineData.find((cat) => cat.categoryName.toLowerCase() === categoryName.toLowerCase())
+
       if (category) {
         const wineInCategory = category.wines.some((w) => w.id === wine.id)
         if (!wineInCategory) return false
@@ -421,33 +434,25 @@ export function WineProvider({ children }: { children: ReactNode }) {
     // Apply additional filters
     if (filters.region && filters.region.length > 0) {
       const wineRegion = wine.region?.toLowerCase() || ""
-      const matchesRegion = filters.region.some((region) => 
-        wineRegion.includes(region.toLowerCase())
-      )
+      const matchesRegion = filters.region.some((region) => wineRegion.includes(region.toLowerCase()))
       if (!matchesRegion) return false
     }
 
     if (filters.grape && filters.grape.length > 0) {
       const wineGrape = wine.uva?.toLowerCase() || ""
-      const matchesGrape = filters.grape.some((grape) => 
-        wineGrape.includes(grape.toLowerCase())
-      )
+      const matchesGrape = filters.grape.some((grape) => wineGrape.includes(grape.toLowerCase()))
       if (!matchesGrape) return false
     }
 
     if (filters.style && filters.style.length > 0) {
       const wineStyle = wine.estilo?.toLowerCase() || ""
-      const matchesStyle = filters.style.some((style) => 
-        wineStyle.includes(style.toLowerCase())
-      )
+      const matchesStyle = filters.style.some((style) => wineStyle.includes(style.toLowerCase()))
       if (!matchesStyle) return false
     }
 
     if (filters.type && filters.type.length > 0) {
       const wineType = wine.tipo?.toLowerCase() || ""
-      const matchesType = filters.type.some((type) => 
-        wineType.includes(type.toLowerCase())
-      )
+      const matchesType = filters.type.some((type) => wineType.includes(type.toLowerCase()))
       if (!matchesType) return false
     }
 
@@ -473,7 +478,7 @@ export function WineProvider({ children }: { children: ReactNode }) {
     error,
     categorizedWineData,
     rawWinesData,
-    
+
     // Restaurant data
     restaurant,
     appConfig,
@@ -508,7 +513,7 @@ export function WineProvider({ children }: { children: ReactNode }) {
     refreshWineList: () => {
       refreshData()
     },
-    configLastUpdated: null
+    configLastUpdated: null,
   }
 
   return <WineContext.Provider value={value}>{children}</WineContext.Provider>
@@ -520,4 +525,4 @@ export function useWine() {
     throw new Error("useWine must be used within a WineProvider")
   }
   return context
-} 
+}

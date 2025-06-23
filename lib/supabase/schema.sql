@@ -227,4 +227,4 @@ VALUES ('Restaurant OPEN', 'open', '1example_sheet_id_here');
 -- Insert default app settings for the test restaurant
 INSERT INTO app_settings (restaurant_id, restaurant_name, app_title)
 SELECT id, 'Restaurant OPEN', 'Carta de Vinos OPEN'
-FROM restaurants WHERE subdomain = 'open'; 
+FROM restaurants WHERE subdomain = 'open';
