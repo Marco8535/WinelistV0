@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 interface LoginRequest {
-  subdomain: string
   adminEmail: string
   password: string
 }
@@ -20,7 +19,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { subdomain, adminEmail, password } = body
+    const { adminEmail, password } = body
     
     // Crear cliente de Supabase
     const supabase = createClient()
@@ -38,19 +37,18 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Buscar el restaurante por user_id y subdominio para validar
+    // Buscar el restaurante asociado al user_id
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .select('*')
       .eq('user_id', authData.user.id)
-      .eq('subdomain', subdomain)
       .eq('is_active', true)
       .single()
     
     if (restaurantError || !restaurant) {
       return NextResponse.json(
-        { error: 'Restaurante no encontrado o inactivo' },
-        { status: 401 }
+        { error: 'No se encontró un restaurante activo asociado a esta cuenta' },
+        { status: 404 }
       )
     }
     
@@ -92,14 +90,6 @@ export async function POST(request: NextRequest) {
 }
 
 function validateLoginData(data: LoginRequest): { isValid: boolean; error?: string } {
-  // Validar subdominio
-  if (!data.subdomain || data.subdomain.trim().length < 3) {
-    return {
-      isValid: false,
-      error: 'El subdominio debe tener al menos 3 caracteres'
-    }
-  }
-  
   // Validar email
   if (!data.adminEmail) {
     return {

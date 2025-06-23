@@ -9,14 +9,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2 } from 'lucide-react'
 
 interface LoginFormData {
-  subdomain: string
   adminEmail: string
   password: string
 }
 
 export default function LoginPage() {
   const [formData, setFormData] = useState<LoginFormData>({
-    subdomain: '',
     adminEmail: '',
     password: ''
   })
@@ -34,10 +32,6 @@ export default function LoginPage() {
   }
 
   const validateForm = (): string | null => {
-    if (!formData.subdomain.trim()) {
-      return 'El subdominio es requerido'
-    }
-    
     if (!formData.adminEmail.trim()) {
       return 'El email es requerido'
     }
@@ -113,22 +107,6 @@ export default function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="subdomain">Subdominio</Label>
-              <Input
-                id="subdomain"
-                type="text"
-                placeholder="Ej: restaurante-los-arcos"
-                value={formData.subdomain}
-                onChange={(e) => handleInputChange('subdomain', e.target.value.toLowerCase())}
-                disabled={isLoading}
-                required
-              />
-              <p className="text-xs text-gray-500">
-                Tu sitio web: <span className="font-mono">{formData.subdomain || 'tu-subdominio'}.lazysomm.app</span>
-              </p>
-            </div>
             
             <div className="space-y-2">
               <Label htmlFor="adminEmail">Email del Administrador</Label>
