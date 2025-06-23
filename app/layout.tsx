@@ -2,7 +2,7 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Lato } from "next/font/google"
 import "./globals.css"
-import { WineProvider } from "@/context/wine-context"
+import { RestaurantProvider } from "@/components/restaurant-provider"
 import { Toaster } from "@/components/ui/toaster"
 
 const lato = Lato({
@@ -49,10 +49,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body className={`${lato.variable} font-sans bg-[#F8F8F8] text-[#1A1A1A] prevent-overscroll`}>
-        <WineProvider>
+        <RestaurantProvider>
           {children}
           <Toaster />
-        </WineProvider>
+        </RestaurantProvider>
       </body>
     </html>
   )
