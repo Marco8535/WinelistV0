@@ -33,4 +33,10 @@ SELECT
     subdomain,
     google_sheet_id,
     updated_at
-FROM restaurants; 
+FROM restaurants;
+
+-- Ejemplo: Agregar columna "pais" a la tabla wines
+ALTER TABLE wines ADD COLUMN pais TEXT;
+
+-- Ejemplo: Agregar columna "altitud" 
+ALTER TABLE wines ADD COLUMN altitud TEXT; 

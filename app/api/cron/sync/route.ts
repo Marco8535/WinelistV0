@@ -106,14 +106,8 @@ function parseCSVToWines(csvText: string): any[] {
             case 'Característica del Vino':
               wine.caracteristica = value;
               break;
-            default:
-              // Guardar otros campos importantes con nombres limpiados
-              const cleanFieldName = header.toLowerCase()
-                .replace(/\s+/g, '_')
-                .replace(/[^a-z0-9_]/g, '');
-              if (value && cleanFieldName.length > 0) {
-                wine[cleanFieldName] = value;
-              }
+            // Solo incluir campos que existen en la tabla wines
+            // Ignorar campos como: coordenadas, stock_total, depo_1, etc.
           }
         });
         
