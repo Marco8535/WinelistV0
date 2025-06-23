@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { compare } from 'bcryptjs'
 
 interface LoginRequest {
   subdomain: string
@@ -26,28 +25,31 @@ export async function POST(request: NextRequest) {
     // Crear cliente de Supabase
     const supabase = createClient()
     
-    // Buscar el restaurante por subdominio y email
-    const { data: restaurant, error: restaurantError } = await supabase
-      .from('restaurants')
-      .select('*')
-      .eq('subdomain', subdomain)
-      .eq('admin_email', adminEmail)
-      .eq('is_active', true)
-      .single()
+    // Autenticar con Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: adminEmail,
+      password: password,
+    })
     
-    if (restaurantError || !restaurant) {
+    if (authError || !authData.user) {
       return NextResponse.json(
         { error: 'Credenciales inválidas' },
         { status: 401 }
       )
     }
     
-    // Verificar la contraseña
-    const isPasswordValid = await compare(password, restaurant.admin_password)
+    // Buscar el restaurante por user_id y subdominio para validar
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .select('*')
+      .eq('user_id', authData.user.id)
+      .eq('subdomain', subdomain)
+      .eq('is_active', true)
+      .single()
     
-    if (!isPasswordValid) {
+    if (restaurantError || !restaurant) {
       return NextResponse.json(
-        { error: 'Credenciales inválidas' },
+        { error: 'Restaurante no encontrado o inactivo' },
         { status: 401 }
       )
     }
@@ -61,10 +63,14 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', restaurant.id)
     
-    // Respuesta exitosa (en una implementación real aquí crearías un JWT o session)
+    // Respuesta exitosa - Supabase ya maneja la sesión automáticamente
     return NextResponse.json({
       success: true,
       message: 'Inicio de sesión exitoso',
+      user: {
+        id: authData.user.id,
+        email: authData.user.email
+      },
       restaurant: {
         id: restaurant.id,
         name: restaurant.name,

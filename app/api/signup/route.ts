@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { hash } from 'bcryptjs'
 
 interface SignupRequest {
   restaurantName: string
@@ -41,33 +40,44 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Verificar si el email ya existe
-    const { data: existingEmail } = await supabase
-      .from('restaurants')
-      .select('id')
-      .eq('admin_email', adminEmail)
-      .single()
+    // Crear usuario en Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: adminEmail,
+      password: password,
+      options: {
+        data: {
+          restaurant_name: restaurantName,
+          subdomain: subdomain
+        }
+      }
+    })
     
-    if (existingEmail) {
+    if (authError) {
+      console.error('Error creating user:', authError)
       return NextResponse.json(
-        { error: 'Ya existe una cuenta con este email.' },
-        { status: 409 }
+        { error: authError.message || 'Error al crear el usuario' },
+        { status: 400 }
       )
     }
     
-    // Hashear la contraseña
-    const hashedPassword = await hash(password, 12)
+    if (!authData.user) {
+      return NextResponse.json(
+        { error: 'Error al crear el usuario' },
+        { status: 500 }
+      )
+    }
     
     // Crear el restaurante en la base de datos
     const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .insert({
+        user_id: authData.user.id,
         name: restaurantName,
         subdomain: subdomain,
         admin_email: adminEmail,
-        admin_password: hashedPassword,
         is_active: true,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
       .select()
       .single()
