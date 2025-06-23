@@ -82,8 +82,13 @@ export default function LoginPage() {
         throw new Error(data.error || 'Error al iniciar sesión')
       }
       
-      // Redirigir al sitio del restaurante
-      window.location.href = `https://${formData.subdomain}.lazysomm.app`
+      // Verificar que tenemos la redirectUrl
+      if (data.success && data.redirectUrl) {
+        // Redirigir al sitio del restaurante usando la URL del backend
+        window.location.href = data.redirectUrl
+      } else {
+        throw new Error('Respuesta inválida del servidor')
+      }
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error inesperado al iniciar sesión')

@@ -63,10 +63,14 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', restaurant.id)
     
-    // Respuesta exitosa - Supabase ya maneja la sesión automáticamente
+    // Construir la URL de redirección
+    const redirectUrl = `https://${restaurant.subdomain}.lazysomm.app`
+    
+    // Respuesta exitosa con redirectUrl
     return NextResponse.json({
       success: true,
       message: 'Inicio de sesión exitoso',
+      redirectUrl: redirectUrl,
       user: {
         id: authData.user.id,
         email: authData.user.email
@@ -74,8 +78,7 @@ export async function POST(request: NextRequest) {
       restaurant: {
         id: restaurant.id,
         name: restaurant.name,
-        subdomain: restaurant.subdomain,
-        url: `https://${restaurant.subdomain}.lazysomm.app`
+        subdomain: restaurant.subdomain
       }
     })
     
