@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
   if (!isMainDomain) {
     const { data: restaurant, error } = await supabase
       .from('restaurants')
-      .select('id, name, subdomain, user_id')
+      .select('id, name, subdomain, user_id, logo_url, primary_color, secondary_color, google_sheet_id, last_synced_at')
       .eq('subdomain', subdomain)
       .single()
 
@@ -74,6 +74,11 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-restaurant-id', restaurant.id)
     requestHeaders.set('x-restaurant-name', restaurant.name)
     requestHeaders.set('x-restaurant-subdomain', restaurant.subdomain)
+    requestHeaders.set('x-restaurant-logo-url', restaurant.logo_url || '')
+    requestHeaders.set('x-restaurant-primary-color', restaurant.primary_color || '#C11119')
+    requestHeaders.set('x-restaurant-secondary-color', restaurant.secondary_color || '#F8F8F8')
+    requestHeaders.set('x-restaurant-google-sheet-id', restaurant.google_sheet_id || '')
+    requestHeaders.set('x-restaurant-last-synced-at', restaurant.last_synced_at || '')
 
     return NextResponse.next({
       request: {

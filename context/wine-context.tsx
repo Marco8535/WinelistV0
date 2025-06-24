@@ -20,6 +20,8 @@ interface RestaurantData {
   logo_url?: string
   primary_color: string
   secondary_color: string
+  google_sheet_id?: string
+  last_synced_at?: string
 }
 
 // Props type for WineProvider

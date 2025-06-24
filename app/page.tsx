@@ -13,7 +13,7 @@ import { Loader2 } from "lucide-react"
 import Script from "next/script"
 
 export default function Home() {
-  const { loading, error, selectedCategory } = useWine()
+  const { loading, error, selectedCategory, restaurant } = useWine()
   const [isAdminMode, setIsAdminMode] = useState(false)
 
   const toggleAdminMode = () => {
@@ -69,7 +69,11 @@ export default function Home() {
     <>
       <Script src="/register-sw.js" strategy="afterInteractive" />
       <div className="min-h-screen flex flex-col prevent-overscroll">
-        <Header onAdminClick={toggleAdminMode} />
+        <Header 
+          onAdminClick={toggleAdminMode} 
+          logoUrl={restaurant?.logo_url}
+          restaurantName={restaurant?.name}
+        />
         <CategoryNavigation />
         <ActionBar />
         {selectedCategory === "favorites" ? (

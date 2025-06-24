@@ -7,6 +7,8 @@ import { WineManagementInterface } from "@/components/admin/wine-management-inte
 import { AppConfigTab } from "@/components/admin/app-config-tab"
 import { PremiumWineriesTab } from "@/components/admin/premium-wineries-tab"
 import { CategoriesManagementTab } from "@/components/admin/categories-management-tab"
+import { BrandingTab } from "@/components/admin/branding-tab"
+import { DataSyncTab } from "@/components/admin/data-sync-tab"
 import { ConfigStatusIndicator } from "@/components/config-status-indicator"
 
 interface AdminPanelProps {
@@ -29,9 +31,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="wine-management">Gestión de Carta</TabsTrigger>
           <TabsTrigger value="categories-management">Categorías y Orden</TabsTrigger>
+          <TabsTrigger value="branding">Personalización</TabsTrigger>
+          <TabsTrigger value="data-sync">Sincronización</TabsTrigger>
           <TabsTrigger value="app-config">Configuración</TabsTrigger>
           <TabsTrigger value="premium-wineries">Auspiciantes</TabsTrigger>
         </TabsList>
@@ -40,6 +44,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         </TabsContent>
         <TabsContent value="categories-management">
           <CategoriesManagementTab />
+        </TabsContent>
+        <TabsContent value="branding">
+          <BrandingTab />
+        </TabsContent>
+        <TabsContent value="data-sync">
+          <DataSyncTab />
         </TabsContent>
         <TabsContent value="app-config">
           <AppConfigTab />

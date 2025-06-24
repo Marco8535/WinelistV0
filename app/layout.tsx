@@ -49,6 +49,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
       <body className={`${lato.variable} font-sans bg-[#F8F8F8] text-[#1A1A1A] prevent-overscroll`}>
+        {/* @ts-expect-error Server Component */}
         <RestaurantProvider>
           {children}
           <Toaster />

@@ -5,13 +5,25 @@ import Image from "next/image"
 
 interface HeaderProps {
   onAdminClick: () => void
+  logoUrl?: string | null
+  restaurantName?: string
 }
 
-export function Header({ onAdminClick }: HeaderProps) {
+export function Header({ onAdminClick, logoUrl, restaurantName }: HeaderProps) {
+  const displayLogo = logoUrl || "/images/logo.png"
+  const altText = restaurantName || "It's Open"
+
   return (
     <header className="flex justify-center py-6 px-4 relative">
       <div className="w-40 h-auto">
-        <Image src="/images/logo.png" alt="It's Open" width={400} height={200} priority className="w-full h-auto" />
+        <Image 
+          src={displayLogo} 
+          alt={altText} 
+          width={400} 
+          height={200} 
+          priority 
+          className="w-full h-auto object-contain" 
+        />
       </div>
       <button
         onClick={onAdminClick}
