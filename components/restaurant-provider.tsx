@@ -43,6 +43,13 @@ export async function RestaurantProvider({ children }: RestaurantProviderProps) 
       google_sheet_id: googleSheetId || undefined,
       last_synced_at: lastSyncedAt || undefined,
     }
+
+    // Debug log para verificar que los datos se están recibiendo
+    console.log('[RESTAURANT_PROVIDER] Restaurant data received:', {
+      name: restaurant.name,
+      google_sheet_id: restaurant.google_sheet_id,
+      last_synced_at: restaurant.last_synced_at
+    })
   }
 
   return (
