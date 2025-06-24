@@ -87,7 +87,7 @@ export function WineManagementTab() {
           let visible = wine.enCarta !== false // Por defecto, todos los vinos son visibles
           let orden = wine.orden || 0
 
-          if (savedConfig) {
+          if (savedConfig && savedConfig.wines && Array.isArray(savedConfig.wines)) {
             const savedWine = savedConfig.wines.find((w) => w.id === wine.id)
             if (savedWine) {
               visible = savedWine.visible
