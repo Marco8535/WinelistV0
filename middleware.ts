@@ -80,6 +80,13 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-restaurant-google-sheet-id', restaurant.google_sheet_id || '')
     requestHeaders.set('x-restaurant-last-synced-at', restaurant.last_synced_at || '')
 
+    // Debug log para verificar que los nuevos campos se están pasando
+    console.log(`[MIDDLEWARE] Restaurant data for ${restaurant.name}:`, {
+      id: restaurant.id,
+      google_sheet_id: restaurant.google_sheet_id,
+      last_synced_at: restaurant.last_synced_at
+    })
+
     return NextResponse.next({
       request: {
         headers: requestHeaders,
