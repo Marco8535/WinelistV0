@@ -1,142 +1,92 @@
-import { NextResponse, type NextRequest } from "next/server"
-import { createServerClient } from "@supabase/ssr"
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+
+// Define las rutas que no requieren autenticación
+const publicRoutes = ['/login', '/signup', '/restaurant-not-found']
 
 export async function middleware(request: NextRequest) {
-  // Si las variables de entorno de Supabase no están configuradas,
-  // saltamos el middleware para evitar errores en el despliegue inicial.
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const { pathname } = request.nextUrl
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name) => request.cookies.get(name)?.value,
+        set: (name, value, options) => {
+          request.cookies.set({ name, value, ...options })
+          const response = NextResponse.next({ request })
+          response.cookies.set({ name, value, ...options })
+        },
+        remove: (name, options) => {
+          request.cookies.set({ name, value: '', ...options })
+          const response = NextResponse.next({ request })
+          response.cookies.set({ name, value: '', ...options })
+        },
+      },
+    }
+  )
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("Supabase environment variables are not set. Skipping middleware.")
-    return NextResponse.next()
+  // 1. Obtener la sesión del usuario
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  // 2. Extraer el subdominio
+  const host = request.headers.get('host')!
+  const subdomain = host.split('.')[0]
+  
+  // Excepciones para el dominio principal y URLs de Vercel
+  const isMainDomain = subdomain === 'lazysomm' || host.endsWith('.vercel.app');
+  const onPublicRoute = publicRoutes.includes(pathname)
+
+  // Si está en el dominio principal y no es una ruta pública, redirigir al login
+  if (isMainDomain && !onPublicRoute && !session) {
+      if(pathname === '/') return NextResponse.next(); // Permitir landing page
+      return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
-
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get(name: string) {
-        return request.cookies.get(name)?.value
-      },
-      set(name, value, options) {
-        request.cookies.set({ name, value, ...options })
-        response = NextResponse.next({
-          request: {
-            headers: request.headers,
-          },
-        })
-        response.cookies.set({ name, value, ...options })
-      },
-      remove(name, options) {
-        request.cookies.set({ name, value: "", ...options })
-        response = NextResponse.next({
-          request: {
-            headers: request.headers,
-          },
-        })
-        response.cookies.set({ name, value: "", ...options })
-      },
-    },
-  })
-
-  // Extraer el subdominio de la URL
-  const host = request.headers.get('host') || ''
-  const subdomain = extractSubdomain(host)
-  
-  // Si no hay subdominio o es 'www', permitir acceso normal
-  if (!subdomain || subdomain === 'www') {
-    await supabase.auth.getUser()
-    return response
+  // 3. Si no hay sesión y la ruta no es pública, redirigir al login
+  if (!session && !onPublicRoute && !isMainDomain) {
+    return NextResponse.redirect(new URL('/login', `https://${host.split(':')[0]}`))
   }
 
-  // Buscar el restaurante por subdominio
-  const { data: restaurant, error: restaurantError } = await supabase
-    .from('restaurants')
-    .select('*')
-    .eq('subdomain', subdomain)
-    .eq('is_active', true)
-    .single()
+  // 4. Lógica para subdominios
+  if (!isMainDomain) {
+    const { data: restaurant, error } = await supabase
+      .from('restaurants')
+      .select('id, name, subdomain, user_id')
+      .eq('subdomain', subdomain)
+      .single()
 
-  // Si no se encuentra el restaurante, redirigir a página de error
-  if (restaurantError || !restaurant) {
-    const url = new URL('/restaurant-not-found', request.url)
-    return NextResponse.redirect(url)
-  }
-
-  // Obtener la sesión del usuario actual
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  // Determinar si la ruta es privada (admin)
-  const isPrivateRoute = isAdminRoute(request.nextUrl.pathname)
-  
-  if (isPrivateRoute) {
-    // Para rutas privadas, verificar autenticación y permisos
-    if (!user) {
-      // Usuario no autenticado, redirigir al login
-      const loginUrl = new URL('/login', request.url)
-      return NextResponse.redirect(loginUrl)
+    if (error || !restaurant) {
+      return NextResponse.redirect(new URL('/restaurant-not-found', request.url))
     }
     
-    // Verificar que el usuario pertenece a este restaurante
-    if (restaurant.user_id !== user.id) {
-      // Usuario no autorizado para este restaurante
-      const unauthorizedUrl = new URL('/unauthorized', request.url)
-      return NextResponse.redirect(unauthorizedUrl)
+    // Si la ruta es privada (contiene /admin), verificar que el usuario logueado es el dueño
+    if(pathname.includes('/admin')) {
+        if(!session || session.user.id !== restaurant.user_id) {
+            return NextResponse.redirect(new URL('/unauthorized', request.url));
+        }
     }
+
+    // 5. Pasar datos del restaurante a la aplicación a través de headers
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-restaurant-id', restaurant.id)
+    requestHeaders.set('x-restaurant-name', restaurant.name)
+    requestHeaders.set('x-restaurant-subdomain', restaurant.subdomain)
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
   }
 
-  // Agregar headers con información del restaurante para uso en la aplicación
-  response.headers.set('x-restaurant-id', restaurant.id)
-  response.headers.set('x-restaurant-name', restaurant.name)
-  response.headers.set('x-restaurant-subdomain', restaurant.subdomain)
-  
-  if (user) {
-    response.headers.set('x-user-id', user.id)
-  }
-
-  return response
-}
-
-// Función para extraer el subdominio de la URL
-function extractSubdomain(host: string): string | null {
-  // Remover puerto si existe
-  const hostname = host.split(':')[0]
-  
-  // Si es localhost o IP, no hay subdominio
-  if (hostname === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-    return null
-  }
-  
-  // Dividir por puntos
-  const parts = hostname.split('.')
-  
-  // Si tiene menos de 3 partes, no hay subdominio (ej: example.com)
-  if (parts.length < 3) {
-    return null
-  }
-  
-  // El subdominio es la primera parte
-  return parts[0]
-}
-
-// Función para determinar si una ruta es privada (admin)
-function isAdminRoute(pathname: string): boolean {
-  const adminRoutes = [
-    '/admin',
-    '/dashboard',
-    '/settings'
-  ]
-  
-  return adminRoutes.some(route => pathname.startsWith(route))
+  return NextResponse.next()
 }
 
 export const config = {
-  matcher: [
+    matcher: [
     /*
      * Match all request paths except for the ones starting with:
      * - api (API routes)
@@ -146,9 +96,7 @@ export const config = {
      * - manifest.json (manifest file)
      * - icons/ (PWA icons)
      * - images/ (public images)
-     * - login (página de login global)
-     * - signup (página de registro global)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|icons/|images/|login|signup|restaurant-not-found|unauthorized).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|manifest.json|icons/|images/).*)',
   ],
 }
