@@ -123,4 +123,4 @@ CREATE POLICY "Allow cron job premium wineries operations" ON premium_wineries
 
 -- 6. Comentarios para documentar los cambios
 COMMENT ON COLUMN restaurants.user_id IS 'Foreign key to auth.users table from Supabase Auth';
-COMMENT ON TABLE restaurants IS 'Updated to use Supabase Auth instead of custom authentication'; 
+COMMENT ON TABLE restaurants IS 'Updated to use Supabase Auth instead of custom authentication';

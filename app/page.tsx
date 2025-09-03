@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useWine } from "@/context/wine-context"
+import { useRestaurant } from "@/components/restaurant-provider"
 import { Header } from "@/components/header"
 import { CategoryNavigation } from "@/components/category-navigation"
 import { ActionBar } from "@/components/action-bar"
@@ -13,8 +14,12 @@ import { Loader2 } from "lucide-react"
 import Script from "next/script"
 
 export default function Home() {
-  const { loading, error, selectedCategory, restaurant } = useWine()
+  const { loading: wineLoading, error: wineError, selectedCategory } = useWine()
+  const { loading: restaurantLoading, error: restaurantError, restaurant } = useRestaurant()
   const [isAdminMode, setIsAdminMode] = useState(false)
+
+  const loading = restaurantLoading || wineLoading
+  const error = restaurantError || wineError
 
   const toggleAdminMode = () => {
     setIsAdminMode(!isAdminMode)
@@ -69,11 +74,7 @@ export default function Home() {
     <>
       <Script src="/register-sw.js" strategy="afterInteractive" />
       <div className="min-h-screen flex flex-col prevent-overscroll">
-        <Header 
-          onAdminClick={toggleAdminMode} 
-          logoUrl={restaurant?.logo_url}
-          restaurantName={restaurant?.name}
-        />
+        <Header onAdminClick={toggleAdminMode} logoUrl={restaurant?.logo_url} restaurantName={restaurant?.name} />
         <CategoryNavigation />
         <ActionBar />
         {selectedCategory === "favorites" ? (

@@ -60,4 +60,4 @@ WHERE tablename = 'wines';
 -- CREATE POLICY "Cron job can modify wines" ON wines
 --   FOR ALL USING (
 --     current_setting('app.cron_job_token', true) = 'your-secret-token'
---   ); 
+--   );

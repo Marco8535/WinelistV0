@@ -72,4 +72,4 @@ SELECT
     created_at,
     updated_at
 FROM restaurants 
-LIMIT 3; 
+LIMIT 3;

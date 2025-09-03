@@ -6,4 +6,4 @@ ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 -- Actualizar registros existentes con el timestamp actual
 UPDATE restaurants 
 SET updated_at = NOW() 
-WHERE updated_at IS NULL; 
+WHERE updated_at IS NULL;

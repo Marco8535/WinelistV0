@@ -223,4 +223,4 @@ async function createInitialCategorySettings(supabase: any, restaurantId: string
     console.error('Error creating initial category settings:', error)
     // No lanzamos error aquí para no bloquear el registro
   }
-} 
+}

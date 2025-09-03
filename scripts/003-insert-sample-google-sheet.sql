@@ -28,4 +28,4 @@ WHERE subdomain = 'open';
 -- c) Ve a File > Share > Publish to web
 -- d) Selecciona "Entire Document" y "CSV" format
 -- e) Copia el ID del URL (la parte entre /d/ y /edit)
--- f) Reemplaza el ID en el UPDATE de arriba 
+-- f) Reemplaza el ID en el UPDATE de arriba

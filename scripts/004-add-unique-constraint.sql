@@ -50,4 +50,4 @@ HAVING COUNT(*) > 1;
 --     SELECT id, ROW_NUMBER() OVER (PARTITION BY id_interno, restaurant_id ORDER BY created_at) as rn
 --     FROM wines WHERE id_interno IS NOT NULL
 --   ) t WHERE rn > 1
--- ); 
+-- );

@@ -192,4 +192,4 @@ export async function fetchWinesFromSheet(sheetId: string): Promise<any[]> {
     console.error(`[CSV_PARSER] Exception fetching sheet ${sheetId}:`, error);
     return [];
   }
-} 
+}

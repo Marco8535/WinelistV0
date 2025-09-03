@@ -1,59 +1,57 @@
 import type React from "react"
-import type { Metadata, Viewport } from "next"
-import { Lato } from "next/font/google"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
 import "./globals.css"
-import { RestaurantProvider } from "@/components/restaurant-provider"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
+import { RestaurantProvider } from "@/components/restaurant-provider"
 
-const lato = Lato({
-  subsets: ["latin"],
-  weight: ["100", "300", "400", "700", "900"],
-  variable: "--font-lato",
-})
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Wine List | It's Open",
-  description: "Digital wine list for fine dining",
+  title: "Wine List",
+  description: "Digital wine list application",
   manifest: "/manifest.json",
+  themeColor: "#000000",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: "cover",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Wine List",
   },
-  applicationName: "Wine List",
-    generator: 'v0.dev'
-}
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  viewportFit: "cover",
-  themeColor: "#ffffff",
+  formatDetection: {
+    telephone: false,
+  },
+    generator: 'v0.app'
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="LazzySomm" />
+        <meta name="apple-mobile-web-app-title" content="Wine List" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#000000" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="icon" href="/favicon.ico" />
       </head>
-      <body className={`${lato.variable} font-sans bg-[#F8F8F8] text-[#1A1A1A] prevent-overscroll`}>
-        {/* @ts-expect-error Server Component */}
-        <RestaurantProvider>
-          {children}
+      <body className={inter.className}>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+          <RestaurantProvider>{children}</RestaurantProvider>
           <Toaster />
-        </RestaurantProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

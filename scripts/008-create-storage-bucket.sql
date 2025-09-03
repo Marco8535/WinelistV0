@@ -26,4 +26,4 @@ CREATE POLICY "Users can delete their own uploads" ON storage.objects
   FOR DELETE USING (
     bucket_id = 'public' 
     AND auth.role() = 'authenticated'
-  ); 
+  );

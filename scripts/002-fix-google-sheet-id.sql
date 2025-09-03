@@ -39,4 +39,4 @@ FROM restaurants;
 ALTER TABLE wines ADD COLUMN pais TEXT;
 
 -- Ejemplo: Agregar columna "altitud" 
-ALTER TABLE wines ADD COLUMN altitud TEXT; 
+ALTER TABLE wines ADD COLUMN altitud TEXT;

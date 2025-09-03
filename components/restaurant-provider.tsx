@@ -1,7 +1,10 @@
-import { headers } from 'next/headers'
-import { WineProvider } from '@/context/wine-context'
-import { ReactNode } from 'react'
+"use client"
 
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createClient } from "@/lib/supabase/client"
+import { WineProvider } from "@/context/wine-context"
+
+// Restaurant data type
 interface RestaurantData {
   id: string
   name: string
@@ -13,67 +16,94 @@ interface RestaurantData {
   last_synced_at?: string
 }
 
-interface RestaurantProviderProps {
-  children: ReactNode
+// Context type definition
+interface RestaurantContextType {
+  restaurant: RestaurantData | null
+  loading: boolean
+  error: string | null
 }
 
-export async function RestaurantProvider({ children }: RestaurantProviderProps) {
-  // Obtener información del restaurante de los headers del middleware
-  const headersList = await headers()
-  const restaurantId = headersList.get('x-restaurant-id')
-  const restaurantName = headersList.get('x-restaurant-name')
-  const restaurantSubdomain = headersList.get('x-restaurant-subdomain')
-  const logoUrl = headersList.get('x-restaurant-logo-url')
-  const primaryColor = headersList.get('x-restaurant-primary-color')
-  const secondaryColor = headersList.get('x-restaurant-secondary-color')
-  const googleSheetId = headersList.get('x-restaurant-google-sheet-id')
-  const lastSyncedAt = headersList.get('x-restaurant-last-synced-at')
+const RestaurantContext = createContext<RestaurantContextType | undefined>(undefined)
 
-  // Si no hay información del restaurante, usar valores por defecto o null
-  let restaurant: RestaurantData | null = null
+export function RestaurantProvider({ children }: { children: ReactNode }) {
+  const [restaurant, setRestaurant] = useState<RestaurantData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  if (restaurantId && restaurantName && restaurantSubdomain) {
-    restaurant = {
-      id: restaurantId,
-      name: restaurantName,
-      subdomain: restaurantSubdomain,
-      logo_url: logoUrl || undefined,
-      primary_color: primaryColor || '#C11119',
-      secondary_color: secondaryColor || '#F8F8F8',
-      google_sheet_id: googleSheetId || undefined,
-      last_synced_at: lastSyncedAt || undefined,
+  const supabase = createClient()
+
+  // Get restaurant ID from subdomain or use default
+  const getRestaurantIdentifier = (): string => {
+    if (typeof window === "undefined") {
+      return "open"
+    }
+    const hostname = window.location.hostname
+    const parts = hostname.split(".")
+
+    // Si estamos en localhost o en una URL de preview de Vercel, usamos 'open' como default.
+    if (parts[0] === "localhost" || hostname.endsWith(".vercel.app")) {
+      return "open"
     }
 
-    // Debug log para verificar que los datos se están recibiendo
-    console.log('[RESTAURANT_PROVIDER] Restaurant data received:', {
-      name: restaurant.name,
-      google_sheet_id: restaurant.google_sheet_id,
-      last_synced_at: restaurant.last_synced_at
-    })
+    // En producción, usamos el subdominio real.
+    return parts[0]
   }
 
+  // Load restaurant data
+  const loadRestaurant = async (): Promise<void> => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      if (!supabase) {
+        setError(
+          "Error: Las credenciales de Supabase no están configuradas. Por favor, configura NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+        )
+        setLoading(false)
+        return
+      }
+
+      const restaurantIdentifier = getRestaurantIdentifier()
+      console.log(`[RestaurantProvider] Loading restaurant for identifier: ${restaurantIdentifier}`)
+
+      // Get restaurant info
+      const { data: restaurantData, error: restaurantError } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("subdomain", restaurantIdentifier)
+        .single()
+
+      if (restaurantError) {
+        console.error("Restaurant not found:", restaurantError)
+        throw new Error(`Restaurant "${restaurantIdentifier}" not found. Please contact support.`)
+      }
+
+      console.log(`[RestaurantProvider] Found restaurant:`, restaurantData)
+      setRestaurant(restaurantData)
+    } catch (err) {
+      console.error("Error loading restaurant:", err)
+      setError(err instanceof Error ? err.message : "Unknown error occurred")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Initial load
+  useEffect(() => {
+    loadRestaurant()
+  }, [])
+
   return (
-    <>
-      {/* Inyectar colores dinámicos */}
-      {restaurant && (
-        <style dangerouslySetInnerHTML={{
-          __html: `
-            :root {
-              --primary: ${restaurant.primary_color};
-              --background: ${restaurant.secondary_color};
-              --primary-foreground: #ffffff;
-              --secondary: ${restaurant.secondary_color};
-              --secondary-foreground: #1a1a1a;
-              --accent: ${restaurant.primary_color}20;
-              --accent-foreground: ${restaurant.primary_color};
-            }
-          `
-        }} />
-      )}
-      
-      <WineProvider restaurant={restaurant}>
-        {children}
-      </WineProvider>
-    </>
+    <RestaurantContext.Provider value={{ restaurant, loading, error }}>
+      <WineProvider restaurant={restaurant}>{children}</WineProvider>
+    </RestaurantContext.Provider>
   )
-} 
+}
+
+export function useRestaurant() {
+  const context = useContext(RestaurantContext)
+  if (context === undefined) {
+    throw new Error("useRestaurant must be used within a RestaurantProvider")
+  }
+  return context
+}
