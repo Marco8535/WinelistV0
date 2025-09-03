@@ -1,93 +1,117 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { useWine } from "@/context/wine-context"
 import { useRestaurant } from "@/components/restaurant-provider"
 import { Header } from "@/components/header"
 import { CategoryNavigation } from "@/components/category-navigation"
-import { ActionBar } from "@/components/action-bar"
 import { WineList } from "@/components/wine-list"
 import { WineDetail } from "@/components/wine-detail"
-import { BookmarkedWinesManager } from "@/components/bookmarked-wines-manager"
+import { SearchBar } from "@/components/search-bar"
+import { WineFilters } from "@/components/wine-filters"
+import { ActionBar } from "@/components/action-bar"
 import { AdminPanel } from "@/components/admin-panel"
-import { Loader2 } from "lucide-react"
-import Script from "next/script"
+import { WelcomePage } from "@/components/welcome-page"
+import { ConfigStatusIndicator } from "@/components/config-status-indicator"
+import { Card, CardContent } from "@/components/ui/card"
+import { AlertCircle, Loader2 } from "lucide-react"
 
-export default function Home() {
-  const { loading: wineLoading, error: wineError, selectedCategory } = useWine()
-  const { loading: restaurantLoading, error: restaurantError, restaurant } = useRestaurant()
-  const [isAdminMode, setIsAdminMode] = useState(false)
+export default function HomePage() {
+  const { restaurant, loading: restaurantLoading, error: restaurantError } = useRestaurant()
+  const wineContext = useWine()
+  const { wines, categories, selectedWine, loading: winesLoading, error: winesError, isConfigured } = wineContext
 
-  const loading = restaurantLoading || wineLoading
-  const error = restaurantError || wineError
-
-  const toggleAdminMode = () => {
-    setIsAdminMode(!isAdminMode)
-  }
-
-  // Efecto para manejar la pantalla completa en iOS
-  useEffect(() => {
-    // Función para manejar el cambio de orientación
-    const handleOrientationChange = () => {
-      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch((err) => {
-          console.log(`Error attempting to enable full-screen mode: ${err.message}`)
-        })
-      }
-    }
-
-    window.addEventListener("orientationchange", handleOrientationChange)
-
-    return () => {
-      window.removeEventListener("orientationchange", handleOrientationChange)
-    }
-  }, [])
-
-  if (loading) {
+  // Si hay error del restaurante, mostrar error
+  if (restaurantError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Cargando carta de vinos...</p>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center gap-4 p-6">
+            <AlertCircle className="h-12 w-12 text-red-500" />
+            <div className="text-center">
+              <h2 className="text-lg font-semibold mb-2">Error de Configuración</h2>
+              <p className="text-sm text-muted-foreground mb-4">{restaurantError}</p>
+              <p className="text-xs text-muted-foreground">Contacta al administrador del sistema.</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
-  if (error) {
+  // Si está cargando el restaurante, mostrar loading
+  if (restaurantLoading || !restaurant) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
-          <h2 className="text-xl font-semibold text-red-700 mb-2">Error al cargar la carta</h2>
-          <p className="text-red-600">{error}</p>
-          <button className="mt-4 px-4 py-2 bg-red-600 text-white rounded" onClick={() => window.location.reload()}>
-            Reintentar
-          </button>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="text-sm text-muted-foreground">Cargando configuración...</p>
         </div>
       </div>
     )
   }
 
-  if (isAdminMode) {
-    return <AdminPanel onBack={toggleAdminMode} />
+  // Si hay error de vinos, mostrar error
+  if (winesError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center gap-4 p-6">
+            <AlertCircle className="h-12 w-12 text-red-500" />
+            <div className="text-center">
+              <h2 className="text-lg font-semibold mb-2">Error cargando datos</h2>
+              <p className="text-sm text-muted-foreground mb-4">{winesError}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
-  return (
-    <>
-      <Script src="/register-sw.js" strategy="afterInteractive" />
-      <div className="min-h-screen flex flex-col prevent-overscroll">
-        <Header onAdminClick={toggleAdminMode} logoUrl={restaurant?.logo_url} restaurantName={restaurant?.name} />
-        <CategoryNavigation />
-        <ActionBar />
-        {selectedCategory === "favorites" ? (
-          <div className="flex-1 overflow-auto prevent-overscroll">
-            <div className="max-w-screen-xl mx-auto px-4 py-6">
-              <BookmarkedWinesManager />
-            </div>
-          </div>
-        ) : (
-          <WineList />
-        )}
-        <WineDetail />
+  // Si está cargando los vinos, mostrar loading
+  if (winesLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="text-sm text-muted-foreground">Cargando carta de vinos...</p>
+        </div>
       </div>
-    </>
+    )
+  }
+
+  // Si no está configurado, mostrar página de bienvenida
+  if (!isConfigured) {
+    return <WelcomePage />
+  }
+
+  // Mostrar la aplicación principal
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <ConfigStatusIndicator />
+
+      <main className="container mx-auto px-4 py-6 space-y-6">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Sidebar */}
+          <aside className="lg:w-80 space-y-6">
+            <SearchBar />
+            <CategoryNavigation categories={categories} />
+            <WineFilters />
+          </aside>
+
+          {/* Main Content */}
+          <div className="flex-1 space-y-6">
+            <ActionBar />
+            <WineList wines={wines} />
+          </div>
+        </div>
+      </main>
+
+      {/* Wine Detail Modal */}
+      {selectedWine && <WineDetail wine={selectedWine} />}
+
+      {/* Admin Panel */}
+      <AdminPanel />
+    </div>
   )
 }
